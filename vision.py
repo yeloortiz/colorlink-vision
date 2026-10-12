@@ -5,7 +5,10 @@ from pydantic import BaseModel, Field
 from PIL import Image
 
 # 1. Cargar el logo desde el archivo
-logo_completo = Image.open("Colorlink_ONCLOUD_logo.png")
+#logo_completo = Image.open("Colorlink_ONCLOUD_logo.png")
+
+# 1. Cargar el logo con el nombre exacto que tiene en tu repositorio
+Colorlink_ONCLOUD_logo = Image.open("Colorlink_ONCLOUD_logo.png")
 
 # 2. Configurar la página (esto cambiará el icono de la pestaña)
 st.set_page_config(
