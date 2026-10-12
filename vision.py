@@ -16,6 +16,14 @@ st.set_page_config(
     page_icon=Colorlink_ONCLOUD_logo,  # Streamlit ajustará automáticamente el tamaño para el favicon
     layout="centered"
 )
+# Forzar el icono para dispositivos móviles (Apple Touch Icon vía HTML)
+st.markdown(
+    """
+    <link rel="apple-touch-icon" href="Colorlink_ONCLOUD_logo.png">
+    """,
+    unsafe_allow_html=True
+)
+
 # 3. MOSTRAR EL LOGO EN LA PANTALLA
 st.image(Colorlink_ONCLOUD_logo, width=200) # Se muestra aquí, arriba del título
 
