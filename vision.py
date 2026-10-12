@@ -3,31 +3,37 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 from PIL import Image
+import base64
 
-# 1. Cargar el logo desde el archivo
-#logo_completo = Image.open("Colorlink_ONCLOUD_logo.png")
+# 1. Cargar el logo
+logo_path = "apple-touch-icon.png"  # o "Colorlink_ONCLOUD_logo.png"
+Colorlink_ONCLOUD_logo = Image.open(logo_path)
 
-# 1. Cargar el logo con el nombre exacto que tiene en tu repositorio
-Colorlink_ONCLOUD_logo = Image.open("apple-touch-icon.png")
+# 2. Convertir la imagen a Base64 para iOS
+with open(logo_path, "rb") as image_file:
+    encoded_string = base64.b64encode(image_file.read()).decode()
 
-# 2. Configurar la página (esto cambiará el icono de la pestaña)
+logo_base64 = f"data:image/png;base64,{encoded_string}"
+
+# 3. Configurar la página (esto cambiará el icono de la pestaña)
 st.set_page_config(
     page_title="Colorlink Vision",
     page_icon=Colorlink_ONCLOUD_logo,  # Streamlit ajustará automáticamente el tamaño para el favicon
     layout="centered"
 )
-# Forzar el icono para dispositivos móviles (Apple Touch Icon vía HTML)
+# 4. Inyectar el icono codificado directamente en el HTML para Safari/iOS
 st.markdown(
-    """
-    <link rel="apple-touch-icon" href="Colorlink_ONCLOUD_logo.png">
+    f"""
+    <head>
+        <link rel="apple-touch-icon" href="{logo_base64}">
+        <link rel="shortcut icon" href="{logo_base64}">
+    </head>
     """,
     unsafe_allow_html=True
 )
 
-# 3. MOSTRAR EL LOGO EN LA PANTALLA
+# 5. MOSTRAR EL LOGO EN LA PANTALLA
 st.image(Colorlink_ONCLOUD_logo, width=200) # Se muestra aquí, arriba del título
-
-# 4. Título de la aplicación
 st.title("Colorlink Vision")
 st.caption("Extracción automática de deltas y coordenadas CIELAB desde fotos o capturas de espectrofotómetros.")
 
