@@ -84,9 +84,11 @@ class DatosEspectro(BaseModel):
     comentario: str = Field(description="Texto o comentario al pie del reporte si existe")
 
 # ==========================================
-# 4. SELECCIÓN EN CASCADA DESDE SUPABASE
+# 4. SELECCIÓN EN CASCADA Y REGISTRO NUEVO
 # ==========================================
-st.subheader("1. Identificación de la Pieza (Jerarquía)")
+synth_col1, synth_col2 = st.columns([3, 1])
+with synth_col1:
+    st.subheader("1. Identificación de la Pieza (Jerarquía)")
 
 oem_seleccionado = None
 master_seleccionado = None
@@ -95,50 +97,80 @@ part_name_val = None
 supplier_seleccionado = None
 
 try:
-    # Nivel 1: OEMs
+    # --- NIVEL 1: OEM ---
     df_oems = conn.query("SELECT DISTINCT oem_name FROM lecturas WHERE oem_name IS NOT NULL ORDER BY oem_name;", ttl=0)
-    lista_oems = ["Selecciona un OEM..."] + df_oems["oem_name"].tolist() if not df_oems.empty else ["Selecciona un OEM..."]
-    oem_seleccionado = st.selectbox("OEM", lista_oems)
+    lista_oems = df_oems["oem_name"].tolist() if not df_oems.empty else []
+    lista_oems.append("➕ Agregar nuevo OEM...")
+
+    oem_choice = st.selectbox("OEM", lista_oems)
+
+    if oem_choice == "➕ Agregar nuevo OEM...":
+        oem_seleccionado = st.text_input("Escribe el nombre del nuevo OEM:")
+    else:
+        oem_seleccionado = oem_choice
 
     if oem_seleccionado and oem_seleccionado != "Selecciona un OEM...":
-        # Nivel 2: Masters
+        
+        # --- NIVEL 2: MASTER ---
         df_masters = conn.query(
             f"SELECT DISTINCT master_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name IS NOT NULL ORDER BY master_name;", 
             ttl=0
         )
-        lista_masters = ["Selecciona un Master..."] + df_masters["master_name"].tolist() if not df_masters.empty else ["Selecciona un Master..."]
-        master_seleccionado = st.selectbox("Master Name", lista_masters)
+        lista_masters = df_masters["master_name"].tolist() if not df_masters.empty else []
+        lista_masters.append("➕ Agregar nuevo Master...")
+
+        master_choice = st.selectbox("Master Name", lista_masters)
+
+        if master_choice == "➕ Agregar nuevo Master...":
+            master_seleccionado = st.text_input("Escribe el nombre del nuevo Master:")
+        else:
+            master_seleccionado = master_choice
 
         if master_seleccionado and master_seleccionado != "Selecciona un Master...":
-            # Nivel 3: Partes (Number / Name)
+            
+            # --- NIVEL 3: PARTE (Number y Name) ---
             df_parts = conn.query(
                 f"SELECT DISTINCT part_number, part_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name = '{master_seleccionado}' AND part_number IS NOT NULL;", 
                 ttl=0
             )
+            
+            lista_parts = []
             if not df_parts.empty:
                 df_parts['display'] = df_parts['part_number'].astype(str) + " - " + df_parts['part_name'].fillna('')
-                lista_parts = ["Selecciona una Parte..."] + df_parts['display'].tolist()
+                lista_parts = df_parts['display'].tolist()
+            lista_parts.append("➕ Agregar nueva Parte...")
+
+            part_choice = st.selectbox("Part Number / Name", lista_parts)
+
+            if part_choice == "➕ Agregar nueva Parte...":
+                col_pn, col_pname = st.columns(2)
+                with col_pn:
+                    part_number_val = st.text_input("Número de Parte:")
+                with col_pname:
+                    part_name_val = st.text_input("Nombre de la Parte:")
             else:
-                lista_parts = ["Selecciona una Parte..."]
-            
-            part_seleccionada = st.selectbox("Part Number / Name", lista_parts)
+                part_number_val = part_choice.split(" - ")[0]
+                part_name_val = part_choice.split(" - ")[1] if " - " in part_choice else ""
 
-            if part_seleccionada and part_seleccionada != "Selecciona una Parte...":
-                part_number_val = part_seleccionada.split(" - ")[0]
-                part_name_val = part_seleccionada.split(" - ")[1] if " - " in part_seleccionada else ""
-
-                # Nivel 4: Supplier
+            if part_number_val:
+                
+                # --- NIVEL 4: SUPPLIER ---
                 df_suppliers = conn.query(
                     f"SELECT DISTINCT supplier_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name = '{master_seleccionado}' AND part_number = '{part_number_val}' AND supplier_name IS NOT NULL;", 
                     ttl=0
                 )
-                lista_suppliers = ["Selecciona Proveedor..."] + df_suppliers["supplier_name"].tolist() if not df_suppliers.empty else ["Selecciona Proveedor..."]
-                supplier_seleccionado = st.selectbox("Supplier Name", lista_suppliers)
+                lista_suppliers = df_suppliers["supplier_name"].tolist() if not df_suppliers.empty else []
+                lista_suppliers.append("➕ Agregar nuevo Proveedor...")
+
+                supplier_choice = st.selectbox("Supplier Name", lista_suppliers)
+
+                if supplier_choice == "➕ Agregar nuevo Proveedor...":
+                    supplier_seleccionado = st.text_input("Escribe el nombre del nuevo Proveedor:")
+                else:
+                    supplier_seleccionado = supplier_choice
 
 except Exception as e:
-    st.warning(f"Nota: Los menús en cascada se poblarán automáticamente conforme guardes registros en la base de datos. ({e})")
-
-st.markdown("---")
+    st.warning(f"Nota: Los menús interactivos se están inicializando. ({e})")
 
 # ==========================================
 # 5. CAPTURA Y ANÁLISIS DE IMAGEN CON GEMINI
