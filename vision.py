@@ -5,23 +5,25 @@ from pydantic import BaseModel, Field
 from PIL import Image
 import base64
 
-# 1. Cargar el logo
+# ==========================================
+# 1. CONFIGURACIÓN DEL LOGO E ICONO iOS
+# ==========================================
 logo_path = "apple-touch-icon.png"  # o "Colorlink_ONCLOUD_logo.png"
 Colorlink_ONCLOUD_logo = Image.open(logo_path)
 
-# 2. Convertir la imagen a Base64 para iOS
+# Convertir la imagen a Base64 para iOS
 with open(logo_path, "rb") as image_file:
     encoded_string = base64.b64encode(image_file.read()).decode()
 
 logo_base64 = f"data:image/png;base64,{encoded_string}"
 
-# 3. Configurar la página (esto cambiará el icono de la pestaña)
+# Configurar la página (esto cambiará el icono de la pestaña)
 st.set_page_config(
     page_title="Colorlink Vision",
     page_icon=Colorlink_ONCLOUD_logo,  # Streamlit ajustará automáticamente el tamaño para el favicon
     layout="centered"
 )
-# 4. Inyectar el icono codificado directamente en el HTML para Safari/iOS
+# Inyectar el icono codificado directamente en el HTML para Safari/iOS
 st.markdown(
     f"""
     <head>
@@ -32,12 +34,15 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 5. MOSTRAR EL LOGO EN LA PANTALLA
+# MOSTRAR EL LOGO EN LA PANTALLA
 st.image(Colorlink_ONCLOUD_logo, width=200) # Se muestra aquí, arriba del título
 st.title("Colorlink Vision")
 st.caption("Extracción automática de deltas y coordenadas CIELAB desde fotos o capturas de espectrofotómetros.")
 
-# --- Resto de tu código ---
+# ==========================================
+# 2. CONEXIÓN A SUPABASE Y GEMINI API
+# ==========================================
+# Conexión a la base de datos PostgreSQL en Supabase
 
 # 1. Autenticación con Gemini API Key
 # Intenta obtener la clave desde los Secretos de Streamlit Cloud o pide la clave en pantalla
@@ -52,7 +57,9 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# 2. Esquema estricto Pydantic para la extracción metrológica
+# ==========================================
+# 3. ESQUEMA PPYDANTIC PARA EXTRACCIÓN
+# ==========================================
 class DatosEspectro(BaseModel):
     equipo_software: str = Field(description="Modelo de equipo o software si aparece (ej. CM-3700A / SpectraMagic NX)")
     muestra_id: str = Field(description="Número o identificador de muestra/lote si existe")
@@ -76,8 +83,68 @@ class DatosEspectro(BaseModel):
     veredicto: str = Field(description="Aprobación si existe: PASS, FAIL, ACEPTADO, RECHAZADO, etc.")
     comentario: str = Field(description="Texto o comentario al pie del reporte si existe")
 
-# 3. Captura de Imagen (Optimizada para pantalla táctil y escritorio)
-st.subheader("1. Captura o Carga la Lectura")
+# ==========================================
+# 4. SELECCIÓN EN CASCADA DESDE SUPABASE
+# ==========================================
+st.subheader("1. Identificación de la Pieza (Jerarquía)")
+
+oem_seleccionado = None
+master_seleccionado = None
+part_number_val = None
+part_name_val = None
+supplier_seleccionado = None
+
+try:
+    # Nivel 1: OEMs
+    df_oems = conn.query("SELECT DISTINCT oem_name FROM lecturas WHERE oem_name IS NOT NULL ORDER BY oem_name;", ttl=0)
+    lista_oems = ["Selecciona un OEM..."] + df_oems["oem_name"].tolist() if not df_oems.empty else ["Selecciona un OEM..."]
+    oem_seleccionado = st.selectbox("OEM", lista_oems)
+
+    if oem_seleccionado and oem_seleccionado != "Selecciona un OEM...":
+        # Nivel 2: Masters
+        df_masters = conn.query(
+            f"SELECT DISTINCT master_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name IS NOT NULL ORDER BY master_name;", 
+            ttl=0
+        )
+        lista_masters = ["Selecciona un Master..."] + df_masters["master_name"].tolist() if not df_masters.empty else ["Selecciona un Master..."]
+        master_seleccionado = st.selectbox("Master Name", lista_masters)
+
+        if master_seleccionado and master_seleccionado != "Selecciona un Master...":
+            # Nivel 3: Partes (Number / Name)
+            df_parts = conn.query(
+                f"SELECT DISTINCT part_number, part_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name = '{master_seleccionado}' AND part_number IS NOT NULL;", 
+                ttl=0
+            )
+            if not df_parts.empty:
+                df_parts['display'] = df_parts['part_number'].astype(str) + " - " + df_parts['part_name'].fillna('')
+                lista_parts = ["Selecciona una Parte..."] + df_parts['display'].tolist()
+            else:
+                lista_parts = ["Selecciona una Parte..."]
+            
+            part_seleccionada = st.selectbox("Part Number / Name", lista_parts)
+
+            if part_seleccionada and part_seleccionada != "Selecciona una Parte...":
+                part_number_val = part_seleccionada.split(" - ")[0]
+                part_name_val = part_seleccionada.split(" - ")[1] if " - " in part_seleccionada else ""
+
+                # Nivel 4: Supplier
+                df_suppliers = conn.query(
+                    f"SELECT DISTINCT supplier_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name = '{master_seleccionado}' AND part_number = '{part_number_val}' AND supplier_name IS NOT NULL;", 
+                    ttl=0
+                )
+                lista_suppliers = ["Selecciona Proveedor..."] + df_suppliers["supplier_name"].tolist() if not df_suppliers.empty else ["Selecciona Proveedor..."]
+                supplier_seleccionado = st.selectbox("Supplier Name", lista_suppliers)
+
+except Exception as e:
+    st.warning(f"Nota: Los menús en cascada se poblarán automáticamente conforme guardes registros en la base de datos. ({e})")
+
+st.markdown("---")
+
+# ==========================================
+# 5. CAPTURA Y ANÁLISIS DE IMAGEN CON GEMINI
+# ==========================================
+
+st.subheader("2. Captura o Carga la Lectura")
 
 opcion_carga = st.radio("Selecciona origen de la imagen:", ["Subir Foto / Archivo / Screenshot", "Usar Cámara Directa"])
 
@@ -91,6 +158,9 @@ else:
     foto = st.camera_input("Toma una foto a la pantalla del espectrofotómetro")
     if foto:
         imagen_cargada = Image.open(foto)
+
+# Variables predeterminadas por si se ajustan a mano
+ln_val, an_val, bn_val = 52.40, 12.10, -2.30
 
 if imagen_cargada:
     st.image(imagen_cargada, caption="Lectura seleccionada", use_column_width=True)
@@ -123,6 +193,11 @@ if imagen_cargada:
                 datos = DatosEspectro.model_validate_json(response.text)
                 
                 st.success("¡Lectura completada!")
+
+                # Guardamos los valores medidos extraídos para asignarlos a los inputs
+                ln_val = datos.medido_L
+                an_val = datos.medido_a
+                bn_val = datos.medido_b
                 
                 # Desviaciones Principales (Deltas)
                 st.markdown("### 📊 Desviaciones (Deltas)")
@@ -146,8 +221,76 @@ if imagen_cargada:
                 st.info(f"**Veredicto:** {datos.veredicto} | **Muestra/Lote:** {datos.muestra_id}\n\n**Comentario:** {datos.comentario}")
                 
                 # Formato JSON listo para copiar o enviar
-                with st.expander("Ver formato JSON (para enviar a la BD)"):
-                    st.json(datos.model_dump())
+                #with st.expander("Ver formato JSON (para enviar a la BD)"):
+                    #st.json(datos.model_dump())
 
             except Exception as e:
                 st.error(f"Error al procesar la imagen: {e}")
+
+st.markdown("---")
+
+# ==========================================
+# 6. VALORES INSTRUMENTALES FINALES Y EVALUACIÓN VISUAL (-3 a 3)
+# ==========================================
+st.subheader("3. Confirmación de Valores y Evaluación Visual")
+
+col_l, col_a, col_b = st.columns(3)
+with col_l:
+    ln_val = st.number_input("L* (ln)", value=float(ln_val), format="%.2f")
+with col_a:
+    an_val = st.number_input("a* (an)", value=float(an_val), format="%.2f")
+with col_b:
+    bn_val = st.number_input("b* (bn)", value=float(bn_val), format="%.2f")
+
+st.markdown("#### Evaluación Visual por Eje (-3 a 3)")
+st.caption("0 = color exacto | ±1, ±2 = aprobado | ±3 = rechazado")
+
+col_vl, col_va, col_vb = st.columns(3)
+with col_vl:
+    lv_val = st.selectbox("Eval Eje L (lv)", [-3, -2, -1, 0, 1, 2, 3], index=3)
+with col_va:
+    av_val = st.selectbox("Eval Eje a (av)", [-3, -2, -1, 0, 1, 2, 3], index=3)
+with col_vb:
+    bv_val = st.selectbox("Eval Eje b (bv)", [-3, -2, -1, 0, 1, 2, 3], index=3)
+
+st.markdown("---")
+
+# ==========================================
+# 7. BOTÓN DE GUARDADO EN SUPABASE
+# ==========================================
+if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_width=True):
+    if not oem_seleccionado or oem_seleccionado == "Selecciona un OEM..." or \
+       not master_seleccionado or master_seleccionado == "Selecciona un Master..." or \
+       not supplier_seleccionado or supplier_seleccionado == "Selecciona Proveedor...":
+        st.warning("⚠️ Por favor completa la selección en cascada (OEM, Master, Parte y Proveedor) antes de guardar.")
+    else:
+        try:
+            query = """
+                INSERT INTO lecturas (
+                    oem_name, master_name, part_name, part_number, supplier_name,
+                    ln, an, bn, lv, av, bv, created_at
+                ) 
+                VALUES (
+                    :oem, :master, :p_name, :p_num, :supplier,
+                    :ln, :an, :bn, :lv, :av, :bv, NOW()
+                );
+            """
+            with conn.session as s:
+                s.execute(query, {
+                    "oem": oem_seleccionado,
+                    "master": master_seleccionado,
+                    "p_name": part_name_val,
+                    "p_num": part_number_val,
+                    "supplier": supplier_seleccionado,
+                    "ln": ln_val,
+                    "an": an_val,
+                    "bn": bn_val,
+                    "lv": lv_val,
+                    "av": av_val,
+                    "bv": bv_val
+                })
+                s.commit()
+                
+            st.success(f"🚀 ¡Lectura guardada exitosamente para **{oem_seleccionado}** (Parte: {part_number_val})!")
+        except Exception as e:
+            st.error(f"Error al insertar en la base de datos: {e}")
