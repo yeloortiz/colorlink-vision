@@ -1,4 +1,6 @@
 streamlit
 google-genai
 pydantic
-pillow
+Pillow
+sqlalchemy
+psycopg2-binary
