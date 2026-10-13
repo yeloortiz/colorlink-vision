@@ -4,6 +4,8 @@ from google.genai import types
 from pydantic import BaseModel, Field
 from PIL import Image
 import base64
+import sqlalchemy
+import pandas as pd
 
 # ==========================================
 # 1. CONFIGURACIÓN DEL LOGO E ICONO iOS
@@ -45,9 +47,10 @@ st.caption("Extracción automática de deltas y coordenadas CIELAB con registro 
 # 2. CONEXIÓN A SUPABASE Y GEMINI API
 # ==========================================
 try:
-    conn = st.connection("postgresql", type="sql")
+    db_url = f"postgresql+psycopg2://{st.secrets['connections']['postgresql']['username']}:{st.secrets['connections']['postgresql']['password']}@{st.secrets['connections']['postgresql']['host']}:{st.secrets['connections']['postgresql']['port']}/{st.secrets['connections']['postgresql']['database']}"
+    engine = sqlalchemy.create_engine(db_url)
 except Exception as e:
-    st.error(f"Error al conectar con Supabase: {e}")
+    st.error(f"Error al configurar el motor de base de datos: {e}")
     st.stop()
 
 api_key = st.secrets.get("GEMINI_API_KEY", None)
@@ -96,7 +99,7 @@ supplier_seleccionado = None
 
 try:
     # --- NIVEL 1: OEM ---
-    df_oems = conn.query("SELECT DISTINCT oem_name FROM lecturas WHERE oem_name IS NOT NULL ORDER BY oem_name;", ttl=0)
+    df_oems = pd.read_sql("SELECT DISTINCT oem_name FROM lecturas WHERE oem_name IS NOT NULL ORDER BY oem_name;", engine)
     lista_oems = df_oems["oem_name"].tolist() if not df_oems.empty else []
     lista_oems.append("➕ Agregar nuevo OEM...")
 
@@ -109,10 +112,8 @@ try:
     if oem_seleccionado and oem_seleccionado != "Selecciona un OEM...":
         
         # --- NIVEL 2: MASTER ---
-        df_masters = conn.query(
-            f"SELECT DISTINCT master_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name IS NOT NULL ORDER BY master_name;", 
-            ttl=0
-        )
+        query_masters = f"SELECT DISTINCT master_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name IS NOT NULL ORDER BY master_name;"
+        df_masters = pd.read_sql(query_masters, engine)
         lista_masters = df_masters["master_name"].tolist() if not df_masters.empty else []
         lista_masters.append("➕ Agregar nuevo Master...")
 
@@ -125,10 +126,8 @@ try:
         if master_seleccionado and master_seleccionado != "Selecciona un Master...":
             
             # --- NIVEL 3: PARTE (Number y Name) ---
-            df_parts = conn.query(
-                f"SELECT DISTINCT part_number, part_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name = '{master_seleccionado}' AND part_number IS NOT NULL;", 
-                ttl=0
-            )
+            query_parts = f"SELECT DISTINCT part_number, part_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name = '{master_seleccionado}' AND part_number IS NOT NULL;"
+            df_parts = pd.read_sql(query_parts, engine)
             lista_parts = []
             if not df_parts.empty:
                 df_parts['display'] = df_parts['part_number'].astype(str) + " - " + df_parts['part_name'].fillna('')
@@ -152,10 +151,8 @@ try:
 
             if part_number_val:
                 # --- NIVEL 4: SUPPLIER ---
-                df_suppliers = conn.query(
-                    f"SELECT DISTINCT supplier_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name = '{master_seleccionado}' AND part_number = '{part_number_val}' AND supplier_name IS NOT NULL;", 
-                    ttl=0
-                )
+                query_suppliers = f"SELECT DISTINCT supplier_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name = '{master_seleccionado}' AND part_number = '{part_number_val}' AND supplier_name IS NOT NULL;"
+                df_suppliers = pd.read_sql(query_suppliers, engine)
                 lista_suppliers = df_suppliers["supplier_name"].tolist() if not df_suppliers.empty else []
                 lista_suppliers.append("➕ Agregar nuevo Proveedor...")
 
@@ -207,7 +204,7 @@ if imagen_cargada:
                 """
                 
                 response = client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-3.8-flash",
                     contents=[imagen_cargada, prompt],
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
@@ -291,8 +288,8 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
                     :ln, :an, :bn, :lv, :av, :bv, NOW()
                 );
             """
-            with conn.session as s:
-                s.execute(query, {
+            with engine.begin() as connection:
+                connection.execute(insert_query, {
                     "oem": oem_seleccionado,
                     "master": master_seleccionado,
                     "p_name": part_name_val,
@@ -305,7 +302,6 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
                     "av": av_val,
                     "bv": bv_val
                 })
-                s.commit()
                 
             st.success(f"🚀 ¡Lectura guardada exitosamente para **{oem_seleccionado}** (Parte: {part_number_val})!")
         except Exception as e:
