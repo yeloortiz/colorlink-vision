@@ -45,16 +45,20 @@ st.caption("Extracción automática de deltas y coordenadas CIELAB con registro 
 # 2. CONEXIÓN A SUPABASE Y GEMINI API
 # ==========================================
 try:
-    # Usamos explícitamente psycopg2 para evitar errores de binarios en la nube
-    db_url = (
-        f"postgresql+psycopg2://postgres:{st.secrets['connections']['postgresql']['password']}@"
-        f"{st.secrets['connections']['postgresql']['host']}:{st.secrets['connections']['postgresql']['port']}/"
-        f"{st.secrets['connections']['postgresql']['database']}"
-    )
-    conn = st.connection("postgresql", type="sql", url=db_url)
+    conn = st.connection("postgresql", type="sql")
 except Exception as e:
     st.error(f"Error al conectar con Supabase: {e}")
     st.stop()
+
+api_key = st.secrets.get("GEMINI_API_KEY", None)
+if not api_key:
+    api_key = st.sidebar.text_input("Gemini API Key", type="password")
+
+if not api_key:
+    st.info("👈 Introduce tu Gemini API Key en el menú lateral o configúrala en los Secrets para comenzar.")
+    st.stop()
+
+client = genai.Client(api_key=api_key)
 
 # ==========================================
 # 3. ESQUEMA PYDANTIC PARA EXTRACCIÓN
