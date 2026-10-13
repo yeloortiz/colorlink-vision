@@ -3,4 +3,4 @@ google-genai
 pydantic
 Pillow
 sqlalchemy
-psycopg2-binary
+psycopg
