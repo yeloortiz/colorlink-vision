@@ -6,6 +6,7 @@ from PIL import Image
 import base64
 import sqlalchemy
 import pandas as pd
+import os
 
 # ==========================================
 # 1. CONFIGURACIÓN DEL LOGO E ICONO iOS
@@ -61,6 +62,10 @@ if not api_key:
     st.info("👈 Introduce tu Gemini API Key en el menú lateral o configúrala en los Secrets para comenzar.")
     st.stop()
 
+# Forzamos la variable de entorno para que el cliente la reconozca sin confundirla con OAuth
+os.environ["GEMINI_API_KEY"] = api_key
+
+# Inicializamos el cliente pasando la clave directamente
 client = genai.Client(api_key=api_key)
 
 # ==========================================
