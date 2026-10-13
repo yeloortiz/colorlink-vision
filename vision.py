@@ -8,46 +8,49 @@ import base64
 # ==========================================
 # 1. CONFIGURACIÓN DEL LOGO E ICONO iOS
 # ==========================================
-logo_path = "apple-touch-icon.png"  # o "Colorlink_ONCLOUD_logo.png"
-Colorlink_ONCLOUD_logo = Image.open(logo_path)
+logo_path = "apple-touch-icon.png"  # Asegúrate de que este archivo exista en tu repositorio
+try:
+    Colorlink_ONCLOUD_logo = Image.open(logo_path)
+    with open(logo_path, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode()
+    logo_base64 = f"data:image/png;base64,{encoded_string}"
+except Exception:
+    Colorlink_ONCLOUD_logo = None
+    logo_base64 = ""
 
-# Convertir la imagen a Base64 para iOS
-with open(logo_path, "rb") as image_file:
-    encoded_string = base64.b64encode(image_file.read()).decode()
-
-logo_base64 = f"data:image/png;base64,{encoded_string}"
-
-# Configurar la página (esto cambiará el icono de la pestaña)
 st.set_page_config(
     page_title="Colorlink Vision",
-    page_icon=Colorlink_ONCLOUD_logo,  # Streamlit ajustará automáticamente el tamaño para el favicon
+    page_icon=Colorlink_ONCLOUD_logo if Colorlink_ONCLOUD_logo else "🎨",
     layout="centered"
 )
-# Inyectar el icono codificado directamente en el HTML para Safari/iOS
-st.markdown(
-    f"""
-    <head>
-        <link rel="apple-touch-icon" href="{logo_base64}">
-        <link rel="shortcut icon" href="{logo_base64}">
-    </head>
-    """,
-    unsafe_allow_html=True
-)
 
-# MOSTRAR EL LOGO EN LA PANTALLA
-st.image(Colorlink_ONCLOUD_logo, width=200) # Se muestra aquí, arriba del título
+if logo_base64:
+    st.markdown(
+        f"""
+        <head>
+            <link rel="apple-touch-icon" href="{logo_base64}">
+            <link rel="shortcut icon" href="{logo_base64}">
+        </head>
+        """,
+        unsafe_allow_html=True
+    )
+
+if Colorlink_ONCLOUD_logo:
+    st.image(Colorlink_ONCLOUD_logo, width=200)
+
 st.title("Colorlink Vision")
-st.caption("Extracción automática de deltas y coordenadas CIELAB desde fotos o capturas de espectrofotómetros.")
+st.caption("Extracción automática de deltas y coordenadas CIELAB con registro en Supabase.")
 
 # ==========================================
 # 2. CONEXIÓN A SUPABASE Y GEMINI API
 # ==========================================
-# Conexión a la base de datos PostgreSQL en Supabase
+try:
+    conn = st.connection("postgresql", type="sql")
+except Exception as e:
+    st.error(f"Error al conectar con Supabase: {e}")
+    st.stop()
 
-# 1. Autenticación con Gemini API Key
-# Intenta obtener la clave desde los Secretos de Streamlit Cloud o pide la clave en pantalla
 api_key = st.secrets.get("GEMINI_API_KEY", None)
-
 if not api_key:
     api_key = st.sidebar.text_input("Gemini API Key", type="password")
 
@@ -58,23 +61,20 @@ if not api_key:
 client = genai.Client(api_key=api_key)
 
 # ==========================================
-# 3. ESQUEMA PPYDANTIC PARA EXTRACCIÓN
+# 3. ESQUEMA PYDANTIC PARA EXTRACCIÓN
 # ==========================================
 class DatosEspectro(BaseModel):
     equipo_software: str = Field(description="Modelo de equipo o software si aparece (ej. CM-3700A / SpectraMagic NX)")
     muestra_id: str = Field(description="Número o identificador de muestra/lote si existe")
     
-    # Patrón / Estándar
     patron_L: float = Field(description="L del patrón")
     patron_a: float = Field(description="a del patrón")
     patron_b: float = Field(description="b del patrón")
     
-    # Muestra Medida
     medido_L: float = Field(description="L* medido")
     medido_a: float = Field(description="a* medido")
     medido_b: float = Field(description="b* medido")
     
-    # Desviaciones (Deltas)
     delta_L: float = Field(description="dL* / Delta L")
     delta_a: float = Field(description="da* / Delta a")
     delta_b: float = Field(description="db* / Delta b")
@@ -86,9 +86,7 @@ class DatosEspectro(BaseModel):
 # ==========================================
 # 4. SELECCIÓN EN CASCADA Y REGISTRO NUEVO
 # ==========================================
-synth_col1, synth_col2 = st.columns([3, 1])
-with synth_col1:
-    st.subheader("1. Identificación de la Pieza (Jerarquía)")
+st.subheader("1. Identificación de la Pieza (Jerarquía)")
 
 oem_seleccionado = None
 master_seleccionado = None
@@ -103,7 +101,6 @@ try:
     lista_oems.append("➕ Agregar nuevo OEM...")
 
     oem_choice = st.selectbox("OEM", lista_oems)
-
     if oem_choice == "➕ Agregar nuevo OEM...":
         oem_seleccionado = st.text_input("Escribe el nombre del nuevo OEM:")
     else:
@@ -120,7 +117,6 @@ try:
         lista_masters.append("➕ Agregar nuevo Master...")
 
         master_choice = st.selectbox("Master Name", lista_masters)
-
         if master_choice == "➕ Agregar nuevo Master...":
             master_seleccionado = st.text_input("Escribe el nombre del nuevo Master:")
         else:
@@ -133,7 +129,6 @@ try:
                 f"SELECT DISTINCT part_number, part_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name = '{master_seleccionado}' AND part_number IS NOT NULL;", 
                 ttl=0
             )
-            
             lista_parts = []
             if not df_parts.empty:
                 df_parts['display'] = df_parts['part_number'].astype(str) + " - " + df_parts['part_name'].fillna('')
@@ -141,7 +136,6 @@ try:
             lista_parts.append("➕ Agregar nueva Parte...")
 
             part_choice = st.selectbox("Part Number / Name", lista_parts)
-
             if part_choice == "➕ Agregar nueva Parte...":
                 col_pn, col_pname = st.columns(2)
                 with col_pn:
@@ -149,11 +143,14 @@ try:
                 with col_pname:
                     part_name_val = st.text_input("Nombre de la Parte:")
             else:
-                part_number_val = part_choice.split(" - ")[0]
-                part_name_val = part_choice.split(" - ")[1] if " - " in part_choice else ""
+                if " - " in part_choice:
+                    part_number_val = part_choice.split(" - ")[0]
+                    part_name_val = part_choice.split(" - ")[1]
+                else:
+                    part_number_val = part_choice
+                    part_name_val = ""
 
             if part_number_val:
-                
                 # --- NIVEL 4: SUPPLIER ---
                 df_suppliers = conn.query(
                     f"SELECT DISTINCT supplier_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name = '{master_seleccionado}' AND part_number = '{part_number_val}' AND supplier_name IS NOT NULL;", 
@@ -163,7 +160,6 @@ try:
                 lista_suppliers.append("➕ Agregar nuevo Proveedor...")
 
                 supplier_choice = st.selectbox("Supplier Name", lista_suppliers)
-
                 if supplier_choice == "➕ Agregar nuevo Proveedor...":
                     supplier_seleccionado = st.text_input("Escribe el nombre del nuevo Proveedor:")
                 else:
@@ -172,14 +168,14 @@ try:
 except Exception as e:
     st.warning(f"Nota: Los menús interactivos se están inicializando. ({e})")
 
+st.markdown("---")
+
 # ==========================================
 # 5. CAPTURA Y ANÁLISIS DE IMAGEN CON GEMINI
 # ==========================================
-
 st.subheader("2. Captura o Carga la Lectura")
 
 opcion_carga = st.radio("Selecciona origen de la imagen:", ["Subir Foto / Archivo / Screenshot", "Usar Cámara Directa"])
-
 imagen_cargada = None
 
 if opcion_carga == "Subir Foto / Archivo / Screenshot":
@@ -191,13 +187,11 @@ else:
     if foto:
         imagen_cargada = Image.open(foto)
 
-# Variables predeterminadas por si se ajustan a mano
 ln_val, an_val, bn_val = 52.40, 12.10, -2.30
 
 if imagen_cargada:
     st.image(imagen_cargada, caption="Lectura seleccionada", use_column_width=True)
     
-    # 4. Procesamiento con Gemini Vision
     if st.button("🚀 Extraer Datos con Gemini", type="primary", use_container_width=True):
         with st.spinner("Analizando reporte metrológico con Gemini..."):
             try:
@@ -213,7 +207,7 @@ if imagen_cargada:
                 """
                 
                 response = client.models.generate_content(
-                    model="gemini-3.8-flash",
+                    model="gemini-2.5-flash",
                     contents=[imagen_cargada, prompt],
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
@@ -223,15 +217,12 @@ if imagen_cargada:
                 )
                 
                 datos = DatosEspectro.model_validate_json(response.text)
-                
                 st.success("¡Lectura completada!")
-
-                # Guardamos los valores medidos extraídos para asignarlos a los inputs
+                
                 ln_val = datos.medido_L
                 an_val = datos.medido_a
                 bn_val = datos.medido_b
-                
-                # Desviaciones Principales (Deltas)
+
                 st.markdown("### 📊 Desviaciones (Deltas)")
                 m1, m2, m3, m4 = st.columns(4)
                 m1.metric("dL*", datos.delta_L)
@@ -239,7 +230,6 @@ if imagen_cargada:
                 m3.metric("db*", datos.delta_b)
                 m4.metric("dE*ab", datos.delta_E)
                 
-                # Tabla Comparativa Completa
                 st.markdown("### 📑 Detalle Metrológico")
                 tabla_comparativa = {
                     "Parámetro": ["L (Luminosidad)", "a (Verde-Rojo)", "b (Azul-Amarillo)"],
@@ -248,13 +238,7 @@ if imagen_cargada:
                     "Delta (Desviación)": [datos.delta_L, datos.delta_a, datos.delta_b]
                 }
                 st.dataframe(tabla_comparativa, use_container_width=True)
-                
-                # Información Adicional
                 st.info(f"**Veredicto:** {datos.veredicto} | **Muestra/Lote:** {datos.muestra_id}\n\n**Comentario:** {datos.comentario}")
-                
-                # Formato JSON listo para copiar o enviar
-                #with st.expander("Ver formato JSON (para enviar a la BD)"):
-                    #st.json(datos.model_dump())
 
             except Exception as e:
                 st.error(f"Error al procesar la imagen: {e}")
@@ -262,7 +246,7 @@ if imagen_cargada:
 st.markdown("---")
 
 # ==========================================
-# 6. VALORES INSTRUMENTALES FINALES Y EVALUACIÓN VISUAL (-3 a 3)
+# 6. VALORES FINALES Y EVALUACIÓN VISUAL (-3 a 3)
 # ==========================================
 st.subheader("3. Confirmación de Valores y Evaluación Visual")
 
@@ -294,7 +278,7 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
     if not oem_seleccionado or oem_seleccionado == "Selecciona un OEM..." or \
        not master_seleccionado or master_seleccionado == "Selecciona un Master..." or \
        not supplier_seleccionado or supplier_seleccionado == "Selecciona Proveedor...":
-        st.warning("⚠️ Por favor completa la selección en cascada (OEM, Master, Parte y Proveedor) antes de guardar.")
+        st.warning("⚠️ Por favor completa o agrega los campos de la jerarquía (OEM, Master, Parte y Proveedor) antes de guardar.")
     else:
         try:
             query = """
