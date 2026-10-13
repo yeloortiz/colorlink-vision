@@ -252,13 +252,19 @@ st.markdown("---")
 # ==========================================
 st.subheader("3. Confirmación de Valores y Evaluación Visual")
 
-col_l, col_a, col_b = st.columns(3)
-with col_l:
-    ln_val = st.number_input("L* (ln)", value=float(ln_val), format="%.2f")
-with col_a:
-    an_val = st.number_input("a* (an)", value=float(an_val), format="%.2f")
-with col_b:
-    bn_val = st.number_input("b* (bn)", value=float(bn_val), format="%.2f")
+# Inicializamos las variables de deltas por si se cargan por defecto
+dl_val = getattr(locals().get('datos', None), 'delta_L', 0.0)
+da_val = getattr(locals().get('datos', None), 'delta_a', 0.0)
+db_val = getattr(locals().get('datos', None), 'delta_b', 0.0)
+
+# Mostramos los valores de las desviaciones directamente (solo lectura para el usuario)
+col_dl, col_da, col_db = st.columns(3)
+with col_dl:
+    st.metric("Delta L* (dL*)", f"{dl_val:.2f}")
+with col_da:
+    st.metric("Delta a* (da*)", f"{da_val:.2f}")
+with col_db:
+    st.metric("Delta b* (db*)", f"{db_val:.2f}")
 
 st.markdown("#### Evaluación Visual por Eje (-3 a 3)")
 st.caption("0 = color exacto | ±1, ±2 = aprobado | ±3 = rechazado")
@@ -283,7 +289,7 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
         st.warning("⚠️ Por favor completa o agrega los campos de la jerarquía (OEM, Master, Parte y Proveedor) antes de guardar.")
     else:
         try:
-            query = """
+            insert_query = sqlalchemy.text("""
                 INSERT INTO lecturas (
                     oem_name, master_name, part_name, part_number, supplier_name,
                     ln, an, bn, lv, av, bv, created_at
@@ -292,7 +298,7 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
                     :oem, :master, :p_name, :p_num, :supplier,
                     :ln, :an, :bn, :lv, :av, :bv, NOW()
                 );
-            """
+            """)
             with engine.begin() as connection:
                 connection.execute(insert_query, {
                     "oem": oem_seleccionado,
