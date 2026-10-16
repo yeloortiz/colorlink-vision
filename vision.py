@@ -268,11 +268,11 @@ st.subheader("3. Confirmación de Valores y Evaluación Visual")
 # Mostramos los valores de las desviaciones directamente (solo lectura para el usuario)
 col_dl, col_da, col_db = st.columns(3)
 with col_dl:
-    st.metric("Delta L* (dL*)", f"{dl_val:.2f}")
+    st.metric("Delta L* (dL*)", f"{st.session_state['dl_val']:.2f}")
 with col_da:
-    st.metric("Delta a* (da*)", f"{da_val:.2f}")
+    st.metric("Delta a* (da*)", f"{st.session_state['da_val']:.2f}")
 with col_db:
-    st.metric("Delta b* (db*)", f"{db_val:.2f}")
+    st.metric("Delta b* (db*)", f"{st.session_state['db_val']:.2f}")
 
 st.markdown("#### Evaluación Visual por Eje (-3 a 3)")
 st.caption("0 = color exacto | ±1, ±2 = aprobado | ±3 = rechazado")
