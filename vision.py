@@ -73,24 +73,24 @@ client = genai.Client(api_key=api_key)
 # 3. ESQUEMA PYDANTIC PARA EXTRACCIÓN
 # ==========================================
 class DatosEspectro(BaseModel):
-    equipo_software: str = Field(description="Modelo de equipo o software si aparece (ej. CM-3700A / SpectraMagic NX)")
-    muestra_id: str = Field(description="Número o identificador de muestra/lote si existe")
+    equipo_software: Optional[str] = Field(default="Desconocido", description="Modelo de equipo o software si aparece")
+    uestra_id: Optional[str] = Field(default="N/A", description="Número o identificador de muestra/lote si existe")
     
-    patron_L: float = Field(description="L del patrón")
-    patron_a: float = Field(description="a del patrón")
-    patron_b: float = Field(description="b del patrón")
+    patron_L: Optional[float] = Field(default=0.0, description="L del patrón")
+    patron_a: Optional[float] = Field(default=0.0, description="a del patrón")
+    patron_b: Optional[float] = Field(default=0.0, description="b del patrón")
     
-    medido_L: float = Field(description="L* medido")
-    medido_a: float = Field(description="a* medido")
-    medido_b: float = Field(description="b* medido")
+    medido_L: Optional[float] = Field(default=0.0, description="L* medido")
+    medido_a: Optional[float] = Field(default=0.0, description="a* medido")
+    medido_b: Optional[float] = Field(default=0.0, description="b* medido")
     
-    delta_L: float = Field(description="dL* / Delta L")
-    delta_a: float = Field(description="da* / Delta a")
-    delta_b: float = Field(description="db* / Delta b")
+    delta_L: Optional[float] = Field(default=0.0, description="dL* / Delta L")
+    delta_a: Optional[float] = Field(default=0.0, description="da* / Delta a")
+    delta_b: Optional[float] = Field(default=0.0, description="db* / Delta b")
     
-    delta_E: float = Field(description="dE*ab / Delta E total")
-    veredicto: str = Field(description="Aprobación si existe: PASS, FAIL, ACEPTADO, RECHAZADO, etc.")
-    comentario: str = Field(description="Texto o comentario al pie del reporte si existe")
+    delta_E: Optional[float] = Field(default=0.0, description="dE*ab / Delta E total")
+    veredicto: Optional[str] = Field(default="PENDIENTE", description="Aprobación si existe: PASS, FAIL, etc.")
+    comentario: Optional[str] = Field(default="", description="Texto o comentario al pie del reporte")
 
 # ==========================================
 # 4. INICIALIZACIÓN DE SESSION STATE
@@ -231,25 +231,28 @@ if imagen_cargada:
                         temperature=0.0
                     )
                 )
+
+                # Depuración: Ver qué respondió exactamente la IA si hay dudas
+                # st.write("Respuesta cruda de Gemini:", response.text)
                 
                 datos = DatosEspectro.model_validate_json(response.text)
                 
                 # Guardamos de forma segura en st.session_state
-                st.session_state['dl_val'] = datos.delta_L
-                st.session_state['da_val'] = datos.delta_a
-                st.session_state['db_val'] = datos.delta_b
-                st.session_state['ln_val'] = datos.medido_L
-                st.session_state['an_val'] = datos.medido_a
-                st.session_state['bn_val'] = datos.medido_b
+                st.session_state['dl_val'] = float(datos.delta_L if datos.delta_L is not None else 0.0)
+                st.session_state['da_val'] = float(datos.delta_a if datos.delta_a is not None else 0.0)
+                st.session_state['db_val'] = float(datos.delta_b if datos.delta_b is not None else 0.0)
+                st.session_state['ln_val'] = float(datos.medido_L if datos.medido_L is not None else 0.0)
+                st.session_state['an_val'] = float(datos.medido_a if datos.medido_a is not None else 0.0)
+                st.session_state['bn_val'] = float(datos.medido_b if datos.medido_b is not None else 0.0)
 
                 st.success("¡Datos extraídos con éxito!")
 
                 st.markdown("### 📊 Desviaciones (Deltas)")
                 m1, m2, m3, m4 = st.columns(4)
-                m1.metric("dL*", datos.delta_L)
-                m2.metric("da*", datos.delta_a)
-                m3.metric("db*", datos.delta_b)
-                m4.metric("dE*ab", datos.delta_E)
+                m1.metric("dL*", f"{st.session_state['dl_val']:.2f}")
+                m2.metric("da*", f"{st.session_state['da_val']:.2f}")
+                m3.metric("db*", f"{st.session_state['db_val']:.2f}")
+                m4.metric("dE*ab", f"{datos.delta_E:.2f}")
                 
                 st.markdown("### 📑 Detalle Metrológico")
                 tabla_comparativa = {
