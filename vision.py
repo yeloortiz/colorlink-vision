@@ -48,7 +48,8 @@ st.caption("Extracción automática de deltas y coordenadas CIELAB con registro 
 # 2. CONEXIÓN A SUPABASE Y GEMINI API
 # ==========================================
 try:
-    db_url = f"postgresql+psycopg2://{st.secrets['connections']['postgresql']['username']}:{st.secrets['connections']['postgresql']['password']}@{st.secrets['connections']['postgresql']['host']}:{st.secrets['connections']['postgresql']['port']}/{st.secrets['connections']['postgresql']['database']}"
+    db_config = st.secrets['connections']['postgresql']
+    db_url = f"postgresql+psycopg2://{db_config['username']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['database']}"
     engine = sqlalchemy.create_engine(db_url)
 except Exception as e:
     st.error(f"Error al configurar el motor de base de datos: {e}")
@@ -92,7 +93,17 @@ class DatosEspectro(BaseModel):
     comentario: str = Field(description="Texto o comentario al pie del reporte si existe")
 
 # ==========================================
-# 4. SELECCIÓN EN CASCADA Y REGISTRO NUEVO
+# 4. INICIALIZACIÓN DE SESSION STATE
+# ==========================================
+if 'dl_val' not in st.session_state: st.session_state['dl_val'] = 0.0
+if 'da_val' not in st.session_state: st.session_state['da_val'] = 0.0
+if 'db_val' not in st.session_state: st.session_state['db_val'] = 0.0
+if 'ln_val' not in st.session_state: st.session_state['ln_val'] = 0.0
+if 'an_val' not in st.session_state: st.session_state['an_val'] = 0.0
+if 'bn_val' not in st.session_state: st.session_state['bn_val'] = 0.0
+
+# ==========================================
+# 5. SELECCIÓN EN CASCADA Y REGISTRO NUEVO
 # ==========================================
 st.subheader("1. Identificación de la Pieza (Jerarquía)")
 
@@ -114,11 +125,10 @@ try:
     else:
         oem_seleccionado = oem_choice
 
-    if oem_seleccionado and oem_seleccionado != "Selecciona un OEM...":
+    if oem_seleccionado:
         
         # --- NIVEL 2: MASTER ---
-        query_masters = f"SELECT DISTINCT master_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name IS NOT NULL ORDER BY master_name;"
-        df_masters = pd.read_sql(query_masters, engine)
+        query_masters = sqlalchemy.text("SELECT DISTINCT master_name FROM lecturas WHERE oem_name = :oem AND master_name IS NOT NULL ORDER BY master_name;")
         lista_masters = df_masters["master_name"].tolist() if not df_masters.empty else []
         lista_masters.append("➕ Agregar nuevo Master...")
 
@@ -128,11 +138,11 @@ try:
         else:
             master_seleccionado = master_choice
 
-        if master_seleccionado and master_seleccionado != "Selecciona un Master...":
+        if master_seleccionado:
             
             # --- NIVEL 3: PARTE (Number y Name) ---
-            query_parts = f"SELECT DISTINCT part_number, part_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name = '{master_seleccionado}' AND part_number IS NOT NULL;"
-            df_parts = pd.read_sql(query_parts, engine)
+            query_parts = sqlalchemy.text("SELECT DISTINCT part_number, part_name FROM lecturas WHERE oem_name = :oem AND master_name = :master AND part_number IS NOT NULL;")
+            df_parts = pd.read_sql(query_parts, engine, params={"oem": oem_seleccionado, "master": master_seleccionado})
             lista_parts = []
             if not df_parts.empty:
                 df_parts['display'] = df_parts['part_number'].astype(str) + " - " + df_parts['part_name'].fillna('')
@@ -156,8 +166,8 @@ try:
 
             if part_number_val:
                 # --- NIVEL 4: SUPPLIER ---
-                query_suppliers = f"SELECT DISTINCT supplier_name FROM lecturas WHERE oem_name = '{oem_seleccionado}' AND master_name = '{master_seleccionado}' AND part_number = '{part_number_val}' AND supplier_name IS NOT NULL;"
-                df_suppliers = pd.read_sql(query_suppliers, engine)
+                query_suppliers = sqlalchemy.text("SELECT DISTINCT supplier_name FROM lecturas WHERE oem_name = :oem AND master_name = :master AND part_number = :p_num AND supplier_name IS NOT NULL;")
+                df_suppliers = pd.read_sql(query_suppliers, engine, params={"oem": oem_seleccionado, "master": master_seleccionado, "p_num": part_number_val})
                 lista_suppliers = df_suppliers["supplier_name"].tolist() if not df_suppliers.empty else []
                 lista_suppliers.append("➕ Agregar nuevo Proveedor...")
 
@@ -173,7 +183,7 @@ except Exception as e:
 st.markdown("---")
 
 # ==========================================
-# 5. CAPTURA Y ANÁLISIS DE IMAGEN CON GEMINI
+# 6. CAPTURA Y ANÁLISIS DE IMAGEN CON GEMINI
 # ==========================================
 st.subheader("2. Captura o Carga la Lectura")
 
@@ -188,8 +198,6 @@ else:
     foto = st.camera_input("Toma una foto a la pantalla del espectrofotómetro")
     if foto:
         imagen_cargada = Image.open(foto)
-
-ln_val, an_val, bn_val = 52.40, 12.10, -2.30
 
 if imagen_cargada:
     st.image(imagen_cargada, caption="Lectura seleccionada", use_column_width=True)
@@ -219,11 +227,16 @@ if imagen_cargada:
                 )
                 
                 datos = DatosEspectro.model_validate_json(response.text)
-                st.success("¡Lectura completada!")
                 
-                ln_val = datos.medido_L
-                an_val = datos.medido_a
-                bn_val = datos.medido_b
+                # Guardamos de forma segura en st.session_state
+                st.session_state['dl_val'] = datos.delta_L
+                st.session_state['da_val'] = datos.delta_a
+                st.session_state['db_val'] = datos.delta_b
+                st.session_state['ln_val'] = datos.medido_L
+                st.session_state['an_val'] = datos.medido_a
+                st.session_state['bn_val'] = datos.medido_b
+
+                st.success("¡Datos extraídos con éxito!")
 
                 st.markdown("### 📊 Desviaciones (Deltas)")
                 m1, m2, m3, m4 = st.columns(4)
@@ -248,14 +261,9 @@ if imagen_cargada:
 st.markdown("---")
 
 # ==========================================
-# 6. VALORES FINALES Y EVALUACIÓN VISUAL (-3 a 3)
+# 7. VALORES FINALES Y EVALUACIÓN VISUAL (-3 a 3)
 # ==========================================
 st.subheader("3. Confirmación de Valores y Evaluación Visual")
-
-# Inicializamos las variables de deltas por si se cargan por defecto
-dl_val = getattr(locals().get('datos', None), 'delta_L', 0.0)
-da_val = getattr(locals().get('datos', None), 'delta_a', 0.0)
-db_val = getattr(locals().get('datos', None), 'delta_b', 0.0)
 
 # Mostramos los valores de las desviaciones directamente (solo lectura para el usuario)
 col_dl, col_da, col_db = st.columns(3)
@@ -280,13 +288,11 @@ with col_vb:
 st.markdown("---")
 
 # ==========================================
-# 7. BOTÓN DE GUARDADO EN SUPABASE
+# 8. BOTÓN DE GUARDADO EN SUPABASE
 # ==========================================
 if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_width=True):
-    if not oem_seleccionado or oem_seleccionado == "Selecciona un OEM..." or \
-       not master_seleccionado or master_seleccionado == "Selecciona un Master..." or \
-       not supplier_seleccionado or supplier_seleccionado == "Selecciona Proveedor...":
-        st.warning("⚠️ Por favor completa o agrega los campos de la jerarquía (OEM, Master, Parte y Proveedor) antes de guardar.")
+    if not oem_seleccionado or not master_seleccionado or not supplier_seleccionado:
+        st.warning("⚠️ Por favor completa o selecciona todos los campos obligatorios de la jerarquía (OEM, Master, Parte y Proveedor) antes de guardar.")
     else:
         try:
             insert_query = sqlalchemy.text("""
