@@ -219,7 +219,7 @@ if imagen_cargada:
                 - Desviación/Deltas (dL*, da*, db*, dE*ab)
                 - Información de equipo, muestra, veredicto y comentarios.
                 
-                Asegúrate de conservar el signo numérico correcto (+/-) en los deltas.
+                Asegúrate de conservar el signo numérico correcto (+/-) en los deltas. Si algún valor no está visible, usa 0.0.
                 """
                 
                 response = client.models.generate_content(
@@ -265,7 +265,7 @@ if imagen_cargada:
                 st.info(f"**Veredicto:** {datos.veredicto} | **Muestra/Lote:** {datos.muestra_id}\n\n**Comentario:** {datos.comentario}")
 
             except Exception as e:
-                st.error(f"Error al procesar la imagen: {e}")
+                st.error(f"Error al procesar la imagen con Gemini: {e}")
 
 st.markdown("---")
 
