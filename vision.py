@@ -113,6 +113,12 @@ part_number_val = None
 part_name_val = None
 supplier_seleccionado = None
 
+# Inicialización segura de DataFrames para evitar NameError
+df_oems = pd.DataFrame()
+df_masters = pd.DataFrame()
+df_parts = pd.DataFrame()
+df_suppliers = pd.DataFrame()
+
 try:
     # --- NIVEL 1: OEM ---
     df_oems = pd.read_sql("SELECT DISTINCT oem_name FROM lecturas WHERE oem_name IS NOT NULL ORDER BY oem_name;", engine)
