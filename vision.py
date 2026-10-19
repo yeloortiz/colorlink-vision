@@ -306,7 +306,7 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
     an_val = st.session_state.get('an_val', 0.0)
     bn_val = st.session_state.get('bn_val', 0.0)
 
-    if not master_id_seleccionado or not part_number_val or not supplier_seleccionado:
+    if not master_seleccionado or not part_number_val or not supplier_seleccionado:
         st.warning("⚠️ Por favor completa o selecciona todos los campos obligatorios de la jerarquía (OEM, Master, Parte y Proveedor) antes de guardar.")
     else:
         try:
