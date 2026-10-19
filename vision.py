@@ -73,27 +73,24 @@ client = genai.Client(api_key=api_key)
 # 3. ESQUEMA PYDANTIC PARA EXTRACCIÓN
 # ==========================================
 class DatosEspectro(BaseModel):
-    equipo_software: Optional[str] = Field(default="Desconocido", description="Modelo de equipo o software si aparece")
-    muestra_id: Optional[str] = Field(default="N/A", description="Número o identificador de muestra/lote si existe")
+    equipo_software: str = Field(default="Desconocido", description="Modelo de equipo o software si aparece")
+    muestra_id: str = Field(default="N/A", description="Número o identificador de muestra/lote si existe")
     
-    patron_L: Optional[float] = Field(default=0.0, description="L del patrón")
-    patron_a: Optional[float] = Field(default=0.0, description="a del patrón")
-    patron_b: Optional[float] = Field(default=0.0, description="b del patrón")
+    patron_L: float = Field(default=0.0, description="L del patrón")
+    patron_a: float = Field(default=0.0, description="a del patrón")
+    patron_b: float = Field(default=0.0, description="b del patrón")
     
-    medido_L: Optional[float] = Field(default=0.0, description="L* medido")
-    medido_a: Optional[float] = Field(default=0.0, description="a* medido")
-    medido_b: Optional[float] = Field(default=0.0, description="b* medido")
+    medido_L: float = Field(default=0.0, description="L* medido")
+    medido_a: float = Field(default=0.0, description="a* medido")
+    medido_b: float = Field(default=0.0, description="b* medido")
     
-    delta_L: Optional[float] = Field(default=0.0, description="dL* / Delta L")
-    delta_a: Optional[float] = Field(default=0.0, description="da* / Delta a")
-    delta_b: Optional[float] = Field(default=0.0, description="db* / Delta b")
+    delta_L: float = Field(default=0.0, description="dL* / Delta L")
+    delta_a: float = Field(default=0.0, description="da* / Delta a")
+    delta_b: float = Field(default=0.0, description="db* / Delta b")
     
-    delta_E: Optional[float] = Field(default=0.0, description="dE*ab / Delta E total")
-    veredicto: Optional[str] = Field(default="PENDIENTE", description="Aprobación si existe: PASS, FAIL, etc.")
-    comentario: Optional[str] = Field(default="", description="Texto o comentario al pie del reporte")
-
-# Forzamos la reconstrucción inmediata del modelo para la API de Gemini
-DatosEspectro.model_rebuild()
+    delta_E: float = Field(default=0.0, description="dE*ab / Delta E total")
+    veredicto: str = Field(default="PENDIENTE", description="Aprobación si existe: PASS, FAIL, etc.")
+    comentario: str = Field(default="", description="Texto o comentario al pie del reporte")
 
 # ==========================================
 # 4. INICIALIZACIÓN DE SESSION STATE
