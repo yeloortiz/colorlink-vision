@@ -288,11 +288,11 @@ st.caption("0 = color exacto | ±1, ±2 = aprobado | ±3 = rechazado")
 
 col_vl, col_va, col_vb = st.columns(3)
 with col_vl:
-    lv_val = st.selectbox("Eval Eje L (lv)", [-3, -2, -1, 0, 1, 2, 3], index=3)
+    lv_val = st.selectbox("Eval Eje L (lv)", [3, 2, 1, 0, -1, -2, -3], index=3)
 with col_va:
-    av_val = st.selectbox("Eval Eje a (av)", [-3, -2, -1, 0, 1, 2, 3], index=3)
+    av_val = st.selectbox("Eval Eje a (av)", [3, 2, 1, 0, -1, -2, -3], index=3)
 with col_vb:
-    bv_val = st.selectbox("Eval Eje b (bv)", [-3, -2, -1, 0, 1, 2, 3], index=3)
+    bv_val = st.selectbox("Eval Eje b (bv)", [3, 2, 1, 0, -1, -2, -3], index=3)
 
 st.markdown("---")
 
@@ -300,13 +300,19 @@ st.markdown("---")
 # 8. BOTÓN DE GUARDADO EN SUPABASE
 # ==========================================
 if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_width=True):
-    if not oem_seleccionado or not master_seleccionado or not supplier_seleccionado:
+    
+    # Recuperamos de forma segura desde session_state
+    ln_val = st.session_state.get('ln_val', 0.0)
+    an_val = st.session_state.get('an_val', 0.0)
+    bn_val = st.session_state.get('bn_val', 0.0)
+
+    if not master_id_seleccionado or not part_number_val or not supplier_seleccionado:
         st.warning("⚠️ Por favor completa o selecciona todos los campos obligatorios de la jerarquía (OEM, Master, Parte y Proveedor) antes de guardar.")
     else:
         try:
             insert_query = sqlalchemy.text("""
                 INSERT INTO lecturas (
-                    oem_name, master_name, part_name, part_number, supplier_name,
+                    :master_id, :p_name, :p_num, :supplier,
                     ln, an, bn, lv, av, bv, created_at
                 ) 
                 VALUES (
@@ -316,17 +322,16 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
             """)
             with engine.begin() as connection:
                 connection.execute(insert_query, {
-                    "oem": oem_seleccionado,
-                    "master": master_seleccionado,
-                    "p_name": part_name_val,
+                    "master_id": master_id_seleccionado,
+                    "p_name": part_name_val if part_name_val else "",
                     "p_num": part_number_val,
                     "supplier": supplier_seleccionado,
                     "ln": ln_val,
                     "an": an_val,
-                    "bn": bn_val,
-                    "lv": lv_val,
-                    "av": av_val,
-                    "bv": bv_val
+                    "bn": bn_val, # Directo desde tu selectbox
+                    "lv": lv_val, # Directo desde tu selectbox
+                    "av": av_val, # Directo desde tu selectbox
+                    "bv": bv_val  # Directo desde tu selectbox
                 })
                 
             st.success(f"🚀 ¡Lectura guardada exitosamente para **{oem_seleccionado}** (Parte: {part_number_val})!")
