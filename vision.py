@@ -92,6 +92,9 @@ class DatosEspectro(BaseModel):
     veredicto: Optional[str] = Field(default="PENDIENTE", description="Aprobación si existe: PASS, FAIL, etc.")
     comentario: Optional[str] = Field(default="", description="Texto o comentario al pie del reporte")
 
+# Forzamos la reconstrucción inmediata del modelo para la API de Gemini
+DatosEspectro.model_rebuild()
+
 # ==========================================
 # 4. INICIALIZACIÓN DE SESSION STATE
 # ==========================================
