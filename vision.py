@@ -74,7 +74,7 @@ client = genai.Client(api_key=api_key)
 # ==========================================
 class DatosEspectro(BaseModel):
     equipo_software: Optional[str] = Field(default="Desconocido", description="Modelo de equipo o software si aparece")
-    uestra_id: Optional[str] = Field(default="N/A", description="Número o identificador de muestra/lote si existe")
+    muestra_id: Optional[str] = Field(default="N/A", description="Número o identificador de muestra/lote si existe")
     
     patron_L: Optional[float] = Field(default=0.0, description="L del patrón")
     patron_a: Optional[float] = Field(default=0.0, description="a del patrón")
