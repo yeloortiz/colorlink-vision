@@ -42,7 +42,7 @@ if Colorlink_ONCLOUD_logo:
     st.image(Colorlink_ONCLOUD_logo, width=200)
 
 st.title("Colorlink Vision")
-st.caption("Extracción automática de deltas y coordenadas CIELAB con registro en Supabase.")
+st.caption("Extracción automática de deltas y coordenadas CIELAB con registro en Base de Datos.")
 
 # ==========================================
 # 2. CONEXIÓN A SUPABASE Y GEMINI API
@@ -120,68 +120,74 @@ df_parts = pd.DataFrame()
 df_suppliers = pd.DataFrame()
 
 try:
-    # --- NIVEL 1: OEM ---
-    df_oems = pd.read_sql("SELECT DISTINCT oem_name FROM lecturas WHERE oem_name IS NOT NULL ORDER BY oem_name;", engine)
-    lista_oems = df_oems["oem_name"].tolist() if not df_oems.empty else []
-    lista_oems.append("➕ Agregar nuevo OEM...")
-
-    oem_choice = st.selectbox("OEM", lista_oems)
-    if oem_choice == "➕ Agregar nuevo OEM...":
-        oem_seleccionado = st.text_input("Escribe el nombre del nuevo OEM:")
-    else:
-        oem_seleccionado = oem_choice
-
-    if oem_seleccionado:
+    # --- NIVEL 1: OEM (Desde la tabla normalizada 'oems') ---
+    df_oems = pd.read_sql("SELECT id, oem_name FROM oems ORDER BY oem_name;", engine)
+    
+    if not df_oems.empty:
+        oem_dict = dict(zip(df_oems['oem_name'], df_oems['id']))
+        lista_oems = list(oem_dict.keys())
         
-        # --- NIVEL 2: MASTER ---
-        query_masters = sqlalchemy.text("SELECT DISTINCT master_name FROM lecturas WHERE oem_name = :oem AND master_name IS NOT NULL ORDER BY master_name;")
-        lista_masters = df_masters["master_name"].tolist() if not df_masters.empty else []
-        lista_masters.append("➕ Agregar nuevo Master...")
+        oem_choice = st.selectbox("OEM", lista_oems)
+        oem_seleccionado = oem_dict[oem_choice]  # Guardamos el ID numérico del OEM
 
-        master_choice = st.selectbox("Master Name", lista_masters)
-        if master_choice == "➕ Agregar nuevo Master...":
-            master_seleccionado = st.text_input("Escribe el nombre del nuevo Master:")
-        else:
-            master_seleccionado = master_choice
-
-        if master_seleccionado:
+        if oem_seleccionado:
             
-            # --- NIVEL 3: PARTE (Number y Name) ---
-            query_parts = sqlalchemy.text("SELECT DISTINCT part_number, part_name FROM lecturas WHERE oem_name = :oem AND master_name = :master AND part_number IS NOT NULL;")
-            df_parts = pd.read_sql(query_parts, engine, params={"oem": oem_seleccionado, "master": master_seleccionado})
-            lista_parts = []
-            if not df_parts.empty:
-                df_parts['display'] = df_parts['part_number'].astype(str) + " - " + df_parts['part_name'].fillna('')
-                lista_parts = df_parts['display'].tolist()
-            lista_parts.append("➕ Agregar nueva Parte...")
+            # --- NIVEL 2: MASTER (Desde la tabla normalizada 'masters' filtrado por oem_id) ---
+            query_masters = sqlalchemy.text("SELECT id, master_name FROM masters WHERE oem_id = :oem_id ORDER BY master_name;")
+            df_masters = pd.read_sql(query_masters, engine, params={"oem_id": oem_seleccionado})
 
-            part_choice = st.selectbox("Part Number / Name", lista_parts)
-            if part_choice == "➕ Agregar nueva Parte...":
-                col_pn, col_pname = st.columns(2)
-                with col_pn:
-                    part_number_val = st.text_input("Número de Parte:")
-                with col_pname:
-                    part_name_val = st.text_input("Nombre de la Parte:")
+            if not df_masters.empty:
+                master_dict = dict(zip(df_masters['master_name'], df_masters['id']))
+                lista_masters = list(master_dict.keys())
+                
+                master_choice = st.selectbox("Master Name", lista_masters)
+                master_seleccionado = master_dict[master_choice]  # Guardamos el ID numérico del Master
+
+                if master_seleccionado:
+                    
+                    # --- NIVEL 3: PARTE (Number y Name desde 'lecturas' filtrado por master_id) ---
+                    query_parts = sqlalchemy.text("SELECT DISTINCT part_number, part_name FROM lecturas WHERE master_id = :m_id AND part_number IS NOT NULL;")
+                    df_parts = pd.read_sql(query_parts, engine, params={"m_id": master_seleccionado})
+
+                    lista_parts = []
+                    if not df_parts.empty:
+                        df_parts['display'] = df_parts['part_number'].astype(str) + " - " + df_parts['part_name'].fillna('')
+                        lista_parts = df_parts['display'].tolist()
+                    lista_parts.append("➕ Agregar nueva Parte...")
+
+                    part_choice = st.selectbox("Part Number / Name", lista_parts)
+                    if part_choice == "➕ Agregar nueva Parte...":
+                        col_pn, col_pname = st.columns(2)
+                        with col_pn:
+                            part_number_val = st.text_input("Número de Parte:")
+                        with col_pname:
+                            part_name_val = st.text_input("Nombre de la Parte:")
+                    else:
+                        if " - " in part_choice:
+                            part_number_val = part_choice.split(" - ")[0]
+                            part_name_val = part_choice.split(" - ")[1]
+                        else:
+                            part_number_val = part_choice
+                            part_name_val = ""
+
+                    if part_number_val:
+                        # --- NIVEL 4: SUPPLIER (Desde 'lecturas' usando master_id y part_number) ---
+                        query_suppliers = sqlalchemy.text("SELECT DISTINCT supplier_name FROM lecturas WHERE master_id = :m_id AND part_number = :p_num AND supplier_name IS NOT NULL;")
+                        df_suppliers = pd.read_sql(query_suppliers, engine, params={"m_id": master_seleccionado, "p_num": part_number_val})
+                        
+                        lista_suppliers = df_suppliers["supplier_name"].tolist() if not df_suppliers.empty else []
+                        lista_suppliers.append("➕ Agregar nuevo Proveedor...")
+
+                        supplier_choice = st.selectbox("Supplier Name", lista_suppliers)
+                        if supplier_choice == "➕ Agregar nuevo Proveedor...":
+                            supplier_seleccionado = st.text_input("Escribe el nombre del nuevo Proveedor:")
+                        else:
+                            supplier_seleccionado = supplier_choice   
+            
             else:
-                if " - " in part_choice:
-                    part_number_val = part_choice.split(" - ")[0]
-                    part_name_val = part_choice.split(" - ")[1]
-                else:
-                    part_number_val = part_choice
-                    part_name_val = ""
-
-            if part_number_val:
-                # --- NIVEL 4: SUPPLIER ---
-                query_suppliers = sqlalchemy.text("SELECT DISTINCT supplier_name FROM lecturas WHERE oem_name = :oem AND master_name = :master AND part_number = :p_num AND supplier_name IS NOT NULL;")
-                df_suppliers = pd.read_sql(query_suppliers, engine, params={"oem": oem_seleccionado, "master": master_seleccionado, "p_num": part_number_val})
-                lista_suppliers = df_suppliers["supplier_name"].tolist() if not df_suppliers.empty else []
-                lista_suppliers.append("➕ Agregar nuevo Proveedor...")
-
-                supplier_choice = st.selectbox("Supplier Name", lista_suppliers)
-                if supplier_choice == "➕ Agregar nuevo Proveedor...":
-                    supplier_seleccionado = st.text_input("Escribe el nombre del nuevo Proveedor:")
-                else:
-                    supplier_seleccionado = supplier_choice
+                st.info("ℹ️ Este OEM aún no tiene Masters registrados en la base de datos.")
+    else:
+        st.warning("⚠️ No hay OEMs registrados en Supabase. Por favor da de alta al menos uno en el Table Editor.")
 
 except Exception as e:
     st.warning(f"Nota: Los menús interactivos se están inicializando. ({e})")
@@ -306,17 +312,26 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
     an_val = st.session_state.get('an_val', 0.0)
     bn_val = st.session_state.get('bn_val', 0.0)
 
-    if not master_seleccionado or not part_number_val or not supplier_seleccionado:
-        st.warning("⚠️ Por favor completa o selecciona todos los campos obligatorios de la jerarquía (OEM, Master, Parte y Proveedor) antes de guardar.")
+    lv_val = st.session_state.get('lv_val', 0)
+    av_val = st.session_state.get('av_val', 0)
+    bv_val = st.session_state.get('bv_val', 0)
+
+    # Validaciones defensivas antes de impactar la base de datos
+    if not master_seleccionado:
+        st.warning("⚠️ Debes seleccionar un Master válido antes de guardar.")
+    elif not part_number_val:
+        st.warning("⚠️ El número de parte es obligatorio.")
+    elif not supplier_seleccionado:
+        st.warning("⚠️ Debes especificar el proveedor.")
     else:
         try:
             insert_query = sqlalchemy.text("""
                 INSERT INTO lecturas (
-                    :master_id, :p_name, :p_num, :supplier,
+                    master_id, part_number, part_name, supplier_name,
                     ln, an, bn, lv, av, bv, created_at
                 ) 
                 VALUES (
-                    :oem, :master, :p_name, :p_num, :supplier,
+                    :master_id, :p_num, :p_name, :supplier,
                     :ln, :an, :bn, :lv, :av, :bv, NOW()
                 );
             """)
@@ -334,6 +349,6 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
                     "bv": bv_val  # Directo desde tu selectbox
                 })
                 
-            st.success(f"🚀 ¡Lectura guardada exitosamente para **{oem_seleccionado}** (Parte: {part_number_val})!")
+            st.success(f"🚀 ¡Lectura guardada exitosamente y vinculada al Master en Supabase!")
         except Exception as e:
             st.error(f"Error al insertar en la base de datos: {e}")
