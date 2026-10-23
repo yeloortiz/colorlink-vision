@@ -337,7 +337,7 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
             """)
             with engine.begin() as connection:
                 connection.execute(insert_query, {
-                    "master_id": master_id_seleccionado,
+                    "master_id": master_seleccionado,
                     "p_name": part_name_val if part_name_val else "",
                     "p_num": part_number_val,
                     "supplier": supplier_seleccionado,
