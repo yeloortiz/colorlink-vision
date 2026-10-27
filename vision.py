@@ -301,11 +301,11 @@ st.caption("0 = color exacto | ±1, ±2 = aprobado | ±3 = rechazado")
 
 col_vl, col_va, col_vb = st.columns(3)
 with col_vl:
-    lv_val = st.selectbox("Eval Eje L (lv)", [3, 2, 1, 0, -1, -2, -3], index=3)
+    lv_val = st.selectbox("Eval Eje L (lv)", [3, 2, 1, 0, -1, -2, -3], index=3, key="lv_val")
 with col_va:
-    av_val = st.selectbox("Eval Eje a (av)", [3, 2, 1, 0, -1, -2, -3], index=3)
+    av_val = st.selectbox("Eval Eje a (av)", [3, 2, 1, 0, -1, -2, -3], index=3, key="av_val")
 with col_vb:
-    bv_val = st.selectbox("Eval Eje b (bv)", [3, 2, 1, 0, -1, -2, -3], index=3)
+    bv_val = st.selectbox("Eval Eje b (bv)", [3, 2, 1, 0, -1, -2, -3], index=3, key="bv_val")
 
 st.markdown("---")
 
