@@ -368,6 +368,12 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
         except Exception as e:
             st.error(f"Error al insertar en la base de datos: {e}")
 
+# Si existe un mensaje de éxito pendiente en la sesión, lo mostramos en pantalla ya recargado
+if "mensaje_exito" in st.session_state and st.session_state.mensaje_exito:
+    st.success(st.session_state.mensaje_exito)
+    # Opcional: Limpiamos la variable para que no se quede fija tras futuras interacciones menores
+    st.session_state.mensaje_exito = None
+
 # ==========================================
 # 9. EXPORTACIÓN A EXCEL FILTRADA (Va al final)
 # ==========================================
