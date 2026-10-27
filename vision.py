@@ -312,6 +312,8 @@ st.markdown("---")
 # ==========================================
 # 8. BOTÓN DE GUARDADO EN SUPABASE
 # ==========================================
+st.markdown("---")
+
 if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_width=True):
     
     # Recuperamos de forma segura desde session_state
@@ -355,8 +357,14 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
                     "av": av_val, # Directo desde tu selectbox
                     "bv": bv_val  # Directo desde tu selectbox
                 })
-                
-            st.success(f"🚀 ¡Lectura guardada exitosamente y vinculada al Master en Supabase!")
+
+            # 1. Activamos la bandera de sesión
+            st.session_state.lectura_guardada = True
+            st.success(f"🚀 ¡Lectura guardada exitosamente y vinculada al Master!")
+
+            # 2. Forzamos el redibujado inmediato para desplegar la sección de Excel
+            st.rerun()
+            
         except Exception as e:
             st.error(f"Error al insertar en la base de datos: {e}")
 
