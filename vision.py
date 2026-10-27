@@ -410,6 +410,10 @@ try:
     df_lecturas = pd.read_sql(query_export, engine, params=params)
 
     if not df_lecturas.empty:
+        
+        if "Fecha y Hora" in df_lecturas.columns:
+            df_lecturas["Fecha y Hora"] = pd.to_datetime(df_lecturas["Fecha y Hora"]).dt.tz_localize(None)
+        
         st.info(f"Se encontraron **{len(df_lecturas)}** registros listos para exportar bajo los criterios actuales.")
         st.dataframe(df_lecturas.head(5), use_container_width=True)
         
