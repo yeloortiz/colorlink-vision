@@ -7,6 +7,7 @@ import base64
 import sqlalchemy
 import pandas as pd
 import os
+import io
 
 # ==========================================
 # 1. CONFIGURACIÓN DEL LOGO E ICONO iOS
@@ -352,3 +353,81 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
             st.success(f"🚀 ¡Lectura guardada exitosamente y vinculada al Master en Supabase!")
         except Exception as e:
             st.error(f"Error al insertar en la base de datos: {e}")
+
+# ==========================================
+# 9. EXPORTACIÓN A EXCEL FILTRADA (Va al final)
+# ==========================================
+st.markdown("---")
+st.subheader("📊 Exportar Reporte a Excel")
+
+modo_exportacion = st.radio(
+    "Selecciona el alcance del reporte:",
+    ["Solo la selección actual (OEM / Master / Parte / Proveedor)", "Todo el histórico de la base de datos"],
+    horizontal=True,
+    key="radio_export_mode"
+)
+
+try:
+    base_query = """
+        SELECT 
+            l.id AS "ID Lectura",
+            o.oem_name AS "OEM",
+            m.master_name AS "Master",
+            l.part_number AS "Número de Parte",
+            l.part_name AS "Nombre de Parte",
+            l.supplier_name AS "Proveedor",
+            l.ln AS "L*", l.an AS "a*", l.bn AS "b*",
+            l.lv AS "ΔL (Visual)", l.av AS "Δa (Visual)", l.bv AS "Δb (Visual)",
+            l.created_at AS "Fecha y Hora"
+        FROM lecturas l
+        JOIN masters m ON l.master_id = m.id
+        JOIN oems o ON m.oem_id = o.id
+    """
+    
+    params = {}
+    where_clauses = []
+
+    if modo_exportacion == "Solo la selección actual (OEM / Master / Parte / Proveedor)":
+        if oem_seleccionado:
+            where_clauses.append("o.id = :oem_id")
+            params["oem_id"] = oem_seleccionado
+        if master_seleccionado:
+            where_clauses.append("m.id = :master_id")
+            params["master_id"] = master_seleccionado
+        if part_number_val:
+            where_clauses.append("l.part_number = :part_num")
+            params["part_num"] = part_number_val
+        if supplier_seleccionado:
+            where_clauses.append("l.supplier_name = :supp_name")
+            params["supp_name"] = supplier_seleccionado
+
+    if where_clauses:
+        base_query += " WHERE " + " AND ".join(where_clauses)
+    
+    base_query += " ORDER BY l.created_at DESC;"
+
+    query_export = sqlalchemy.text(base_query)
+    df_lecturas = pd.read_sql(query_export, engine, params=params)
+
+    if not df_lecturas.empty:
+        st.info(f"Se encontraron **{len(df_lecturas)}** registros listos para exportar bajo los criterios actuales.")
+        st.dataframe(df_lecturas.head(5), use_container_width=True)
+        
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df_lecturas.to_excel(writer, index=False, sheet_name='Colorlink_Reporte')
+        buffer.seek(0)
+
+        st.download_button(
+            label="📥 Descargar Excel Filtrado (.xlsx)",
+            data=buffer,
+            file_name="Colorlink_Reporte_Filtrado.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="primary",
+            use_container_width=True
+        )
+    else:
+        st.warning("⚠️ No existen registros en la base de datos que coincidan con la combinación de filtros seleccionada.")
+
+except Exception as e:
+    st.error(f"Error crítico al generar el reporte filtrado: {e}")
