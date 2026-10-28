@@ -359,7 +359,7 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
                 })
 
             # 1. Activamos la bandera de sesión
-            st.session_state.lectura_guardada = True
+            st.session_state.tiene_lecturas_guardadas = True
             st.success(f"🚀 ¡Lectura guardada exitosamente y vinculada al Master!")
 
             # 2. Forzamos el redibujado inmediato para desplegar la sección de Excel
