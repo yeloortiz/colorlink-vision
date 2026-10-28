@@ -379,11 +379,16 @@ if "mensaje_exito" in st.session_state and st.session_state.mensaje_exito:
 # ==========================================
 if st.session_state.get('tiene_lecturas_guardadas', False):
     st.markdown("---")
-    
+    st.info("💡 **Lectura registrada.** ¿Deseas ingresar otra pieza o terminar la inspección del lote?")
+
     col_nueva, col_terminar = st.columns(2)
     
     with col_nueva:
         if st.button("➕ Realizar Otra Lectura", use_container_width=True):
+            # 1. Desactivamos las banderas de control de lote
+            st.session_state.tiene_lecturas_guardadas = False
+            st.session_state.mostrar_exportacion_excel = False
+            
             # Limpiamos variables de sesión de mediciones para dejar listas para la siguiente pieza
             st.session_state.pop('ln_val', None)
             st.session_state.pop('an_val', None)
