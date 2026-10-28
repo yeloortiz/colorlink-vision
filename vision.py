@@ -210,7 +210,7 @@ opcion_carga = st.radio("Selecciona origen de la imagen:", ["Subir Foto / Archiv
 imagen_cargada = None
 
 if opcion_carga == "Subir Foto / Archivo / Screenshot":
-    archivo = st.file_uploader("Selecciona archivo o pega imagen", type=["jpg", "jpeg", "png"])
+    archivo = st.file_uploader("Selecciona archivo o pega imagen", type=["jpg", "jpeg", "png"], key="archivo")
     if archivo:
         imagen_cargada = Image.open(archivo)
 else:
