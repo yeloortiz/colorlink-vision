@@ -375,12 +375,37 @@ if "mensaje_exito" in st.session_state and st.session_state.mensaje_exito:
     st.session_state.mensaje_exito = None
 
 # ==========================================
-# 9. EXPORTACIÓN A EXCEL FILTRADA (Va al final)
+# 9. CONTROL DE CICLO: NUEVA LECTURA VS FINALIZAR LOTE
 # ==========================================
-# Esta sección permanece oculta hasta que st.session_state.lectura_guardada sea True
-if st.session_state.get('lectura_guardada', False):
+if st.session_state.get('tiene_lecturas_guardadas', False):
     st.markdown("---")
-    st.subheader("📊 Exportar Reporte a Excel")
+    
+    col_nueva, col_terminar = st.columns(2)
+    
+    with col_nueva:
+        if st.button("➕ Realizar Otra Lectura", use_container_width=True):
+            # Limpiamos variables de sesión de mediciones para dejar listas para la siguiente pieza
+            st.session_state.pop('ln_val', None)
+            st.session_state.pop('an_val', None)
+            st.session_state.pop('bn_val', None)
+            st.session_state.pop('mensaje_exito', None)
+            st.rerun()
+            
+    with col_terminar:
+        if st.button("🏁 Finalizar Lote y Descargar Reporte", type="secondary", use_container_width=True):
+            st.session_state.mostrar_exportacion_excel = True
+            st.rerun()
+
+# ==========================================
+# 10. EXPORTACIÓN A EXCEL FILTRADA (Va al final)
+# ==========================================
+#if st.session_state.get('lectura_guardada', False):
+    #st.markdown("---")
+    #st.subheader("📊 Exportar Reporte a Excel")
+
+if st.session_state.get('mostrar_exportacion_excel', False):
+    st.markdown("---")
+    st.subheader("📊 Reporte Consolidado del Lote")
 
     modo_exportacion = st.radio(
         "Selecciona el alcance del reporte:",
