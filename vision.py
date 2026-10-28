@@ -134,7 +134,7 @@ try:
         oem_dict = dict(zip(df_oems['oem_name'], df_oems['id']))
         lista_oems = list(oem_dict.keys())
         
-        oem_choice = st.selectbox("OEM", lista_oems)
+        oem_choice = st.selectbox("OEM", lista_oems, key="oem_choice")
         oem_seleccionado = oem_dict[oem_choice]  # Guardamos el ID numérico del OEM
 
         if oem_seleccionado:
@@ -147,7 +147,7 @@ try:
                 master_dict = dict(zip(df_masters['master_name'], df_masters['id']))
                 lista_masters = list(master_dict.keys())
                 
-                master_choice = st.selectbox("Master Name", lista_masters)
+                master_choice = st.selectbox("Master Name", lista_masters, key="master_choice")
                 master_seleccionado = master_dict[master_choice]  # Guardamos el ID numérico del Master
 
                 if master_seleccionado:
@@ -166,9 +166,9 @@ try:
                     if part_choice == "➕ Agregar nueva Parte...":
                         col_pn, col_pname = st.columns(2)
                         with col_pn:
-                            part_number_val = st.text_input("Número de Parte:")
+                            part_number_val = st.text_input("Número de Parte:", key="part_number_val")
                         with col_pname:
-                            part_name_val = st.text_input("Nombre de la Parte:")
+                            part_name_val = st.text_input("Nombre de la Parte:", key="part_name_val")
                     else:
                         if " - " in part_choice:
                             part_number_val = part_choice.split(" - ")[0]
@@ -187,7 +187,7 @@ try:
 
                         supplier_choice = st.selectbox("Supplier Name", lista_suppliers)
                         if supplier_choice == "➕ Agregar nuevo Proveedor...":
-                            supplier_seleccionado = st.text_input("Escribe el nombre del nuevo Proveedor:")
+                            supplier_seleccionado = st.text_input("Escribe el nombre del nuevo Proveedor:", key="supplier_seleccionado")
                         else:
                             supplier_seleccionado = supplier_choice   
             
