@@ -388,8 +388,13 @@ if st.session_state.get('tiene_lecturas_guardadas', False):
             # 1. Desactivamos las banderas de control de lote
             st.session_state.tiene_lecturas_guardadas = False
             st.session_state.mostrar_exportacion_excel = False
+
+            # 2. Limpiamos las llaves de los selectores visuales (Delta L, a, b)
+            st.session_state.pop('lv_val', None)
+            st.session_state.pop('av_val', None)
+            st.session_state.pop('bv_val', None)
             
-            # Limpiamos variables de sesión de mediciones para dejar listas para la siguiente pieza
+            # 3. Limpiamos variables de sesión de mediciones para dejar listas para la siguiente pieza
             st.session_state.pop('ln_val', None)
             st.session_state.pop('an_val', None)
             st.session_state.pop('bn_val', None)
