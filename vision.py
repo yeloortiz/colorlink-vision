@@ -399,6 +399,19 @@ if st.session_state.get('tiene_lecturas_guardadas', False):
             st.session_state.pop('an_val', None)
             st.session_state.pop('bn_val', None)
             st.session_state.pop('mensaje_exito', None)
+
+            # 4. LIMPIEZA TOTAL DE LLAVES DE LA SESIÓN (Widgets y Selectores en Cascada)
+            st.session_state.pop('archivo', None)                 # Limpia el file_uploader de la imagen/PDF
+            st.session_state.pop('oem_choice', None)              # Limpia el selector de OEM
+            st.session_state.pop('master_choice', None)          # Limpia el selector de Master
+            st.session_state.pop('part_number_val', None)         # Limpia el input de Número de Parte
+            st.session_state.pop('part_name_val', None)           # Limpia el input de Nombre de Parte
+            st.session_state.pop('input_supplier_text', None)     # Limpia el input de nuevo Proveedor
+
+            # 5. Limpiamos mensajes temporales
+            st.session_state.pop('mensaje_exito', None)
+            
+            # 6. Forzamos el redibujado limpio de la PWA
             st.rerun()
             
     with col_terminar:
