@@ -162,7 +162,7 @@ try:
                         lista_parts = df_parts['display'].tolist()
                     lista_parts.append("➕ Agregar nueva Parte...")
 
-                    part_choice = st.selectbox("Part Number / Name", lista_parts)
+                    part_choice = st.selectbox("Part Number / Name", lista_parts, key="widget_part_choice")
                     if part_choice == "➕ Agregar nueva Parte...":
                         col_pn, col_pname = st.columns(2)
                         with col_pn:
@@ -185,7 +185,7 @@ try:
                         lista_suppliers = df_suppliers["supplier_name"].tolist() if not df_suppliers.empty else []
                         lista_suppliers.append("➕ Agregar nuevo Proveedor...")
 
-                        supplier_choice = st.selectbox("Supplier Name", lista_suppliers)
+                        supplier_choice = st.selectbox("Supplier Name", lista_suppliers, key="widget_supplier_choice")
                         if supplier_choice == "➕ Agregar nuevo Proveedor...":
                             supplier_seleccionado = st.text_input("Escribe el nombre del nuevo Proveedor:", key="supplier_seleccionado")
                         else:
@@ -206,7 +206,8 @@ st.markdown("---")
 # ==========================================
 st.subheader("2. Captura o Carga la Lectura")
 
-opcion_carga = st.radio("Selecciona origen de la imagen:", ["Subir Foto / Archivo / Screenshot", "Usar Cámara Directa"])
+opcion_carga = st.radio("Selecciona origen de la imagen:", ["Subir Foto / Archivo / Screenshot", "Usar Cámara Directa"],
+    key="widget_opcion_carga")
 imagen_cargada = None
 
 if opcion_carga == "Subir Foto / Archivo / Screenshot":
@@ -214,7 +215,8 @@ if opcion_carga == "Subir Foto / Archivo / Screenshot":
     if archivo:
         imagen_cargada = Image.open(archivo)
 else:
-    foto = st.camera_input("Toma una foto a la pantalla del espectrofotómetro")
+    foto = st.camera_input("Toma una foto a la pantalla del espectrofotómetro", 
+    key="widget_camera_foto")
     if foto:
         imagen_cargada = Image.open(foto)
 
@@ -406,7 +408,11 @@ if st.session_state.get('tiene_lecturas_guardadas', False):
             st.session_state.pop('master_choice', None)          # Limpia el selector de Master
             st.session_state.pop('part_number_val', None)         # Limpia el input de Número de Parte
             st.session_state.pop('part_name_val', None)           # Limpia el input de Nombre de Parte
-            st.session_state.pop('input_supplier_text', None)     # Limpia el input de nuevo Proveedor
+            st.session_state.pop('supplier_seleccionado', None)     # Limpia el input de nuevo Proveedor
+            st.session_state.pop('widget_part_choice', None)
+            st.session_state.pop('widget_supplier_choice', None)
+            st.session_state.pop('widget_opcion_carga', None)
+            st.session_state.pop('widget_camera_foto', None)
 
             # 5. Limpiamos mensajes temporales
             st.session_state.pop('mensaje_exito', None)
