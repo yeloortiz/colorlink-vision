@@ -361,7 +361,7 @@ if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_wi
                 })
 
             # 1. Activamos la bandera de sesión
-            st.session_state.tiene_lecturas_guardadas = True
+            st.session_state.lectura_guardada = True
             st.success(f"🚀 ¡Lectura guardada exitosamente y vinculada al Master!")
 
             # 2. Forzamos el redibujado inmediato para desplegar la sección de Excel
@@ -379,7 +379,7 @@ if "mensaje_exito" in st.session_state and st.session_state.mensaje_exito:
 # ==========================================
 # 9. CONTROL DE CICLO: NUEVA LECTURA VS FINALIZAR LOTE
 # ==========================================
-if st.session_state.get('tiene_lecturas_guardadas', False):
+if st.session_state.get('lectura_guardada', False):
     st.markdown("---")
     st.info("💡 **Lectura registrada.** ¿Deseas ingresar otra pieza o terminar la inspección del lote?")
 
@@ -388,7 +388,7 @@ if st.session_state.get('tiene_lecturas_guardadas', False):
     with col_nueva:
         if st.button("➕ Realizar Otra Lectura", use_container_width=True):
             # 1. Desactivamos las banderas de control de lote
-            st.session_state.tiene_lecturas_guardadas = False
+            st.session_state.lectura_guardada = False
             st.session_state.mostrar_exportacion_excel = False
 
             # 2. Limpiamos las llaves de los selectores visuales (Delta L, a, b)
