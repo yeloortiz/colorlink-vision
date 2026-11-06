@@ -202,179 +202,165 @@ except Exception as e:
 st.markdown("---")
 
 # ==========================================
-# 6. CAPTURA Y ANÁLISIS DE IMAGEN CON GEMINI
+# 6 & 7. CAPTURA, ANÁLISIS Y CONFIRMACIÓN (CONDICIONADOS)
 # ==========================================
-st.subheader("2. Captura o Carga la Lectura")
+# CONDICIÓN CLAVE: Solo se muestran si NO se ha guardado una lectura aún
+if not st.session_state.lectura_guardada:
 
-opcion_carga = st.radio("Selecciona origen de la imagen:", ["Subir Foto / Archivo / Screenshot", "Usar Cámara Directa"],
-    key="widget_opcion_carga")
-imagen_cargada = None
+    st.subheader("2. Captura o Carga la Lectura")
 
-if opcion_carga == "Subir Foto / Archivo / Screenshot":
-    archivo = st.file_uploader("Selecciona archivo o pega imagen", type=["jpg", "jpeg", "png"], key="archivo")
-    if archivo:
-        imagen_cargada = Image.open(archivo)
-else:
-    foto = st.camera_input("Toma una foto a la pantalla del espectrofotómetro", 
-    key="widget_camera_foto")
-    if foto:
-        imagen_cargada = Image.open(foto)
+    opcion_carga = st.radio(
+        "Selecciona origen de la imagen:", 
+        ["Subir Foto / Archivo / Screenshot", "Usar Cámara Directa"],
+        key="widget_opcion_carga"
+    )
+    imagen_cargada = None
 
-if imagen_cargada:
-    st.image(imagen_cargada, caption="Lectura seleccionada", use_column_width=True)
-    
-    if st.button("🚀 Extraer Datos con Gemini", type="primary", use_container_width=True):
-        with st.spinner("Analizando reporte metrológico con Gemini..."):
-            try:
-                prompt = """
-                Analiza cuidadosamente esta imagen de reporte o pantalla de espectrofotómetro.
-                Extrae con precisión matemática absoluta todos los valores correspondientes a:
-                - Patrón (L, a, b)
-                - Medido (L*, a*, b*)
-                - Desviación/Deltas (dL*, da*, db*, dE*ab)
-                - Información de equipo, muestra, veredicto y comentarios.
-                
-                Asegúrate de conservar el signo numérico correcto (+/-) en los deltas. Si algún valor no está visible, usa 0.0.
-                """
-                
-                response = client.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=[imagen_cargada, prompt],
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=DatosEspectro,
-                        temperature=0.0
-                    )
-                )
-
-                # Depuración: Ver qué respondió exactamente la IA si hay dudas
-                # st.write("Respuesta cruda de Gemini:", response.text)
-                
-                datos = DatosEspectro.model_validate_json(response.text)
-                
-                # Guardamos de forma segura en st.session_state
-                st.session_state['dl_val'] = float(datos.delta_L if datos.delta_L is not None else 0.0)
-                st.session_state['da_val'] = float(datos.delta_a if datos.delta_a is not None else 0.0)
-                st.session_state['db_val'] = float(datos.delta_b if datos.delta_b is not None else 0.0)
-                st.session_state['ln_val'] = float(datos.medido_L if datos.medido_L is not None else 0.0)
-                st.session_state['an_val'] = float(datos.medido_a if datos.medido_a is not None else 0.0)
-                st.session_state['bn_val'] = float(datos.medido_b if datos.medido_b is not None else 0.0)
-
-                st.success("¡Datos extraídos con éxito!")
-
-                st.markdown("### 📊 Desviaciones (Deltas)")
-                m1, m2, m3, m4 = st.columns(4)
-                m1.metric("dL*", f"{st.session_state['dl_val']:.2f}")
-                m2.metric("da*", f"{st.session_state['da_val']:.2f}")
-                m3.metric("db*", f"{st.session_state['db_val']:.2f}")
-                m4.metric("dE*ab", f"{datos.delta_E:.2f}")
-                
-                st.markdown("### 📑 Detalle Metrológico")
-                tabla_comparativa = {
-                    "Parámetro": ["L (Luminosidad)", "a (Verde-Rojo)", "b (Azul-Amarillo)"],
-                    "Patrón / Master": [datos.patron_L, datos.patron_a, datos.patron_b],
-                    "Muestra Medida": [datos.medido_L, datos.medido_a, datos.medido_b],
-                    "Delta (Desviación)": [datos.delta_L, datos.delta_a, datos.delta_b]
-                }
-                st.dataframe(tabla_comparativa, use_container_width=True)
-                st.info(f"**Veredicto:** {datos.veredicto} | **Muestra/Lote:** {datos.muestra_id}\n\n**Comentario:** {datos.comentario}")
-
-            except Exception as e:
-                st.error(f"Error al procesar la imagen con Gemini: {e}")
-
-st.markdown("---")
-
-# ==========================================
-# 7. VALORES FINALES Y EVALUACIÓN VISUAL (-3 a 3)
-# ==========================================
-st.subheader("3. Confirmación de Valores y Evaluación Visual")
-
-# Mostramos los valores de las desviaciones directamente (solo lectura para el usuario)
-col_dl, col_da, col_db = st.columns(3)
-with col_dl:
-    st.metric("Delta L* (dL*)", f"{st.session_state['dl_val']:.2f}")
-with col_da:
-    st.metric("Delta a* (da*)", f"{st.session_state['da_val']:.2f}")
-with col_db:
-    st.metric("Delta b* (db*)", f"{st.session_state['db_val']:.2f}")
-
-st.markdown("#### Evaluación Visual por Eje (-3 a 3)")
-st.caption("0 = color exacto | ±1, ±2 = aprobado | ±3 = rechazado")
-
-col_vl, col_va, col_vb = st.columns(3)
-with col_vl:
-    lv_val = st.selectbox("Eval Eje L (lv)", [3, 2, 1, 0, -1, -2, -3], index=3, key="lv_val")
-with col_va:
-    av_val = st.selectbox("Eval Eje a (av)", [3, 2, 1, 0, -1, -2, -3], index=3, key="av_val")
-with col_vb:
-    bv_val = st.selectbox("Eval Eje b (bv)", [3, 2, 1, 0, -1, -2, -3], index=3, key="bv_val")
-
-st.markdown("---")
-
-# ==========================================
-# 8. BOTÓN DE GUARDADO EN SUPABASE
-# ==========================================
-st.markdown("---")
-
-if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_width=True):
-    
-    # Recuperamos de forma segura desde session_state
-    ln_val = st.session_state.get('ln_val', 0.0)
-    an_val = st.session_state.get('an_val', 0.0)
-    bn_val = st.session_state.get('bn_val', 0.0)
-
-    lv_val = st.session_state.get('lv_val', 0)
-    av_val = st.session_state.get('av_val', 0)
-    bv_val = st.session_state.get('bv_val', 0)
-
-    # Validaciones defensivas antes de impactar la base de datos
-    if not master_seleccionado:
-        st.warning("⚠️ Debes seleccionar un Master válido antes de guardar.")
-    elif not part_number_val:
-        st.warning("⚠️ El número de parte es obligatorio.")
-    elif not supplier_seleccionado:
-        st.warning("⚠️ Debes especificar el proveedor.")
+    if opcion_carga == "Subir Foto / Archivo / Screenshot":
+        archivo = st.file_uploader("Selecciona archivo o pega imagen", type=["jpg", "jpeg", "png"], key="archivo")
+        if archivo:
+            imagen_cargada = Image.open(archivo)
     else:
-        try:
-            insert_query = sqlalchemy.text("""
-                INSERT INTO lecturas (
-                    master_id, part_number, part_name, supplier_name,
-                    ln, an, bn, lv, av, bv, created_at
-                ) 
-                VALUES (
-                    :master_id, :p_num, :p_name, :supplier,
-                    :ln, :an, :bn, :lv, :av, :bv, NOW()
-                );
-            """)
-            with engine.begin() as connection:
-                connection.execute(insert_query, {
-                    "master_id": master_seleccionado,
-                    "p_name": part_name_val if part_name_val else "",
-                    "p_num": part_number_val,
-                    "supplier": supplier_seleccionado,
-                    "ln": ln_val,
-                    "an": an_val,
-                    "bn": bn_val, # Directo desde tu selectbox
-                    "lv": lv_val, # Directo desde tu selectbox
-                    "av": av_val, # Directo desde tu selectbox
-                    "bv": bv_val  # Directo desde tu selectbox
-                })
+        foto = st.camera_input("Toma una foto a la pantalla del espectrofotómetro", key="widget_camera_foto")
+        if foto:
+            imagen_cargada = Image.open(foto)
 
-            # 1. Activamos la bandera de sesión
-            st.session_state.lectura_guardada = True
-            st.success(f"🚀 ¡Lectura guardada exitosamente y vinculada al Master!")
+    if imagen_cargada:
+        st.image(imagen_cargada, caption="Lectura seleccionada", use_column_width=True)
+        
+        if st.button("🚀 Extraer Datos con Gemini", type="primary", use_container_width=True):
+            with st.spinner("Analizando reporte metrológico con Gemini..."):
+                try:
+                    prompt = """
+                    Analiza cuidadosamente esta imagen de reporte o pantalla de espectrofotómetro.
+                    Extrae con precisión matemática absoluta todos los valores correspondientes a:
+                    - Patrón (L, a, b)
+                    - Medido (L*, a*, b*)
+                    - Desviación/Deltas (dL*, da*, db*, dE*ab)
+                    - Información de equipo, muestra, veredicto y comentarios.
+                    
+                    Asegúrate de conservar el signo numérico correcto (+/-) en los deltas. Si algún valor no está visible, usa 0.0.
+                    """
+                    
+                    response = client.models.generate_content(
+                        model="gemini-3.8-flash",
+                        contents=[imagen_cargada, prompt],
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=DatosEspectro,
+                            temperature=0.0
+                        )
+                    )
 
-            # 2. Forzamos el redibujado inmediato para desplegar la sección de Excel
-            st.rerun()
-            
-        except Exception as e:
-            st.error(f"Error al insertar en la base de datos: {e}")
+                    datos = DatosEspectro.model_validate_json(response.text)
+                    
+                    st.session_state['dl_val'] = float(datos.delta_L if datos.delta_L is not None else 0.0)
+                    st.session_state['da_val'] = float(datos.delta_a if datos.delta_a is not None else 0.0)
+                    st.session_state['db_val'] = float(datos.delta_b if datos.delta_b is not None else 0.0)
+                    st.session_state['ln_val'] = float(datos.medido_L if datos.medido_L is not None else 0.0)
+                    st.session_state['an_val'] = float(datos.medido_a if datos.medido_a is not None else 0.0)
+                    st.session_state['bn_val'] = float(datos.medido_b if datos.medido_b is not None else 0.0)
 
-# Si existe un mensaje de éxito pendiente en la sesión, lo mostramos en pantalla ya recargado
-if "mensaje_exito" in st.session_state and st.session_state.mensaje_exito:
-    st.success(st.session_state.mensaje_exito)
-    # Opcional: Limpiamos la variable para que no se quede fija tras futuras interacciones menores
-    st.session_state.mensaje_exito = None
+                    st.success("¡Datos extraídos con éxito!")
+
+                    st.markdown("### 📊 Desviaciones (Deltas)")
+                    m1, m2, m3, m4 = st.columns(4)
+                    m1.metric("dL*", f"{st.session_state['dl_val']:.2f}")
+                    m2.metric("da*", f"{st.session_state['da_val']:.2f}")
+                    m3.metric("db*", f"{st.session_state['db_val']:.2f}")
+                    m4.metric("dE*ab", f"{datos.delta_E:.2f}")
+                    
+                    st.markdown("### 📑 Detalle Metrológico")
+                    tabla_comparativa = {
+                        "Parámetro": ["L (Luminosidad)", "a (Verde-Rojo)", "b (Azul-Amarillo)"],
+                        "Patrón / Master": [datos.patron_L, datos.patron_a, datos.patron_b],
+                        "Muestra Medida": [datos.medido_L, datos.medido_a, datos.medido_b],
+                        "Delta (Desviación)": [datos.delta_L, datos.delta_a, datos.delta_b]
+                    }
+                    st.dataframe(tabla_comparativa, use_container_width=True)
+                    st.info(f"**Veredicto:** {datos.veredicto} | **Muestra/Lote:** {datos.muestra_id}\n\n**Comentario:** {datos.comentario}")
+
+                except Exception as e:
+                    st.error(f"Error al procesar la imagen con Gemini: {e}")
+
+    st.markdown("---")
+
+    # ==========================================
+    # 7. VALORES FINALES Y EVALUACIÓN VISUAL (-3 a 3)
+    # ==========================================
+    st.subheader("3. Confirmación de Valores y Evaluación Visual")
+
+    col_dl, col_da, col_db = st.columns(3)
+    with col_dl:
+        st.metric("Delta L* (dL*)", f"{st.session_state['dl_val']:.2f}")
+    with col_da:
+        st.metric("Delta a* (da*)", f"{st.session_state['da_val']:.2f}")
+    with col_db:
+        st.metric("Delta b* (db*)", f"{st.session_state['db_val']:.2f}")
+
+    st.markdown("#### Evaluación Visual por Eje (-3 a 3)")
+    st.caption("0 = color exacto | ±1, ±2 = aprobado | ±3 = rechazado")
+
+    col_vl, col_va, col_vb = st.columns(3)
+    with col_vl:
+        st.selectbox("Eval Eje L (lv)", [3, 2, 1, 0, -1, -2, -3], index=3, key="lv_val")
+    with col_va:
+        st.selectbox("Eval Eje a (av)", [3, 2, 1, 0, -1, -2, -3], index=3, key="av_val")
+    with col_vb:
+        st.selectbox("Eval Eje b (bv)", [3, 2, 1, 0, -1, -2, -3], index=3, key="bv_val")
+
+    st.markdown("---")
+
+    # ==========================================
+    # 8. BOTÓN DE GUARDADO EN SUPABASE
+    # ==========================================
+    if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_width=True):
+        
+        ln_val = st.session_state.get('ln_val', 0.0)
+        an_val = st.session_state.get('an_val', 0.0)
+        bn_val = st.session_state.get('bn_val', 0.0)
+
+        lv_val = st.session_state.get('lv_val', 0)
+        av_val = st.session_state.get('av_val', 0)
+        bv_val = st.session_state.get('bv_val', 0)
+
+        if not master_seleccionado:
+            st.warning("⚠️ Debes seleccionar un Master válido antes de guardar.")
+        elif not part_number_val:
+            st.warning("⚠️ El número de parte es obligatorio.")
+        elif not supplier_seleccionado:
+            st.warning("⚠️ Debes especificar el proveedor.")
+        else:
+            try:
+                insert_query = sqlalchemy.text("""
+                    INSERT INTO lecturas (
+                        master_id, part_number, part_name, supplier_name,
+                        ln, an, bn, lv, av, bv, created_at
+                    ) 
+                    VALUES (
+                        :master_id, :p_num, :p_name, :supplier,
+                        :ln, :an, :bn, :lv, :av, :bv, NOW()
+                    );
+                """)
+                with engine.begin() as connection:
+                    connection.execute(insert_query, {
+                        "master_id": master_seleccionado,
+                        "p_name": part_name_val if part_name_val else "",
+                        "p_num": part_number_val,
+                        "supplier": supplier_seleccionado,
+                        "ln": ln_val,
+                        "an": an_val,
+                        "bn": bn_val,
+                        "lv": lv_val,
+                        "av": av_val,
+                        "bv": bv_val
+                    })
+
+                st.session_state.lectura_guardada = True
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error al insertar en la base de datos: {e}")
 
 # ==========================================
 # 9. CONTROL DE CICLO: NUEVA LECTURA VS FINALIZAR LOTE
