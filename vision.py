@@ -292,22 +292,22 @@ if not st.session_state.lectura_guardada:
 
     col_dl, col_da, col_db = st.columns(3)
     with col_dl:
-        st.metric("Delta L* (dL*)", f"{st.session_state['dl_val']:.2f}")
+        st.metric("Delta L* (dL*)", f"{st.session_state.get('dl_val',0.0):.2f}")
     with col_da:
-        st.metric("Delta a* (da*)", f"{st.session_state['da_val']:.2f}")
+        st.metric("Delta a* (da*)", f"{st.session_state.get('da_val', 0.0):.2f}")
     with col_db:
-        st.metric("Delta b* (db*)", f"{st.session_state['db_val']:.2f}")
+        st.metric("Delta b* (db*)", f"{st.session_state.get('db_val', 0.0):.2f}")
 
     st.markdown("#### Evaluación Visual por Eje (-3 a 3)")
     st.caption("0 = color exacto | ±1, ±2 = aprobado | ±3 = rechazado")
 
     col_vl, col_va, col_vb = st.columns(3)
     with col_vl:
-        st.selectbox("Eval Eje L (lv)", [3, 2, 1, 0, -1, -2, -3], index=3, key="lv_val")
+        lv_val = st.selectbox("Eval Eje L (lv)", [3, 2, 1, 0, -1, -2, -3], index=3, key="lv_val")
     with col_va:
-        st.selectbox("Eval Eje a (av)", [3, 2, 1, 0, -1, -2, -3], index=3, key="av_val")
+        av_val = st.selectbox("Eval Eje a (av)", [3, 2, 1, 0, -1, -2, -3], index=3, key="av_val")
     with col_vb:
-        st.selectbox("Eval Eje b (bv)", [3, 2, 1, 0, -1, -2, -3], index=3, key="bv_val")
+        bv_val = st.selectbox("Eval Eje b (bv)", [3, 2, 1, 0, -1, -2, -3], index=3, key="bv_val")
 
     st.markdown("---")
 
