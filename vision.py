@@ -348,9 +348,9 @@ if not st.session_state.lectura_guardada:
                         "p_name": part_name_val if part_name_val else "",
                         "p_num": part_number_val,
                         "supplier": supplier_seleccionado,
-                        "ln": ln_val,
-                        "an": an_val,
-                        "bn": bn_val,
+                        "ln": dl_val,
+                        "an": da_val,
+                        "bn": db_val,
                         "lv": lv_val,
                         "av": av_val,
                         "bv": bv_val
