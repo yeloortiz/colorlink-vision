@@ -383,10 +383,13 @@ if st.session_state.get('lectura_guardada', False):
             st.session_state.pop('bv_val', None)
             
             # 3. Limpiamos variables de sesión de mediciones para dejar listas para la siguiente pieza
-            st.session_state.pop('ln_val', None)
-            st.session_state.pop('an_val', None)
-            st.session_state.pop('bn_val', None)
-            st.session_state.pop('mensaje_exito', None)
+            st.session_state['ln_val'] = 0.0
+            st.session_state['an_val'] = 0.0
+            st.session_state['bn_val'] = 0.0
+            st.session_state['dl_val'] = 0.0
+            st.session_state['da_val'] = 0.0
+            st.session_state['db_val'] = 0.0
+            
 
             # 4. LIMPIEZA TOTAL DE LLAVES DE LA SESIÓN (Widgets y Selectores en Cascada)
             st.session_state.pop('archivo', None)                 # Limpia el file_uploader de la imagen/PDF
