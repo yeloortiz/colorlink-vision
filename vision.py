@@ -316,9 +316,9 @@ if not st.session_state.lectura_guardada:
     # ==========================================
     if st.button("💾 Guardar Lectura en la Nube", type="primary", use_container_width=True):
         
-        ln_val = st.session_state.get('ln_val', 0.0)
-        an_val = st.session_state.get('an_val', 0.0)
-        bn_val = st.session_state.get('bn_val', 0.0)
+        ln_val = st.session_state.get('dl_val', 0.0)
+        an_val = st.session_state.get('da_val', 0.0)
+        bn_val = st.session_state.get('db_val', 0.0)
 
         lv_val = st.session_state.get('lv_val', 0)
         av_val = st.session_state.get('av_val', 0)
@@ -348,9 +348,9 @@ if not st.session_state.lectura_guardada:
                         "p_name": part_name_val if part_name_val else "",
                         "p_num": part_number_val,
                         "supplier": supplier_seleccionado,
-                        "ln": dl_val,
-                        "an": da_val,
-                        "bn": db_val,
+                        "ln": ln_val,
+                        "an": an_val,
+                        "bn": bn_val,
                         "lv": lv_val,
                         "av": av_val,
                         "bv": bv_val
