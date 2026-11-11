@@ -60,6 +60,14 @@ st.markdown(
             margin-bottom: 0.2rem;
         }
 
+        /* Forzar centrado de cualquier imagen renderizada dentro del contenedor de cabecera */
+        .header-container img {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            max-width: 140px;
+        }
+
         /* Estilo para el subtítulo o leyenda */
         .custom-caption {
             font-family: 'Montserrat', sans-serif !important;
