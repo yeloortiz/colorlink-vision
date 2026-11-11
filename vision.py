@@ -34,6 +34,44 @@ st.set_page_config(
     layout="centered"
 )
 
+# Inyección de estilos CSS para importar fuente moderna (Inter/Montserrat), centrar y personalizar
+st.markdown(
+    """
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
+        /* Contenedor general centrado para la cabecera */
+        .header-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        /* Estilo personalizado y tipografía para el título principal */
+        .custom-title {
+            font-family: 'Montserrat', sans-serif !important;
+            font-weight: 700;
+            font-size: 2.2rem;
+            color: #1E293B; /* Tono Slate oscuro profesional */
+            margin-top: 0.5rem;
+            margin-bottom: 0.2rem;
+        }
+
+        /* Estilo para el subtítulo o leyenda */
+        .custom-caption {
+            font-family: 'Montserrat', sans-serif !important;
+            font-weight: 400;
+            font-size: 0.95rem;
+            color: #64748B;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 if logo_base64:
     st.markdown(
         f"""
@@ -45,11 +83,16 @@ if logo_base64:
         unsafe_allow_html=True
     )
 
-if Colorlink_ONCLOUD_logo:
-    st.image(Colorlink_ONCLOUD_logo, width=200)
+# Renderizado estructurado y centrado del Logo y Títulos mediante HTML
+st.markdown('<div class="header-container">', unsafe_allow_html=True)
 
-st.title("Colorlink Vision")
-st.caption("Extracción automática de deltas y coordenadas CIELAB con registro en Base de Datos.")
+if Colorlink_ONCLOUD_logo:
+    st.image(Colorlink_ONCLOUD_logo, width=140)
+
+st.markdown('<h1 class="custom-title">Colorlink Vision</h1>', unsafe_allow_html=True)
+st.markdown('<p class="custom-caption">Extracción automática de deltas y coordenadas CIELAB con registro en Base de Datos.</p>', unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
 # 2. CONEXIÓN A SUPABASE Y GEMINI API
