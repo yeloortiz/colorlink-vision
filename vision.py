@@ -34,45 +34,35 @@ st.set_page_config(
     layout="centered"
 )
 
-# Inyección de estilos CSS para importar fuente moderna (Inter/Montserrat), centrar y personalizar
+# Inyección de estilos CSS tipográficos y de títulos
 st.markdown(
     """
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
 
-        /* Contenedor general centrado para la cabecera */
-        .header-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+        /* Contenedor de texto centrado */
+        .text-center-container {
             text-align: center;
+            width: 100%;
+            margin-top: 0.5rem;
             margin-bottom: 2rem;
         }
 
-        /* Estilo personalizado y tipografía para el título principal */
+        /* Título principal con tipografía Montserrat */
         .custom-title {
             font-family: 'Montserrat', sans-serif !important;
             font-weight: 700;
             font-size: 2.2rem;
-            color: #1E293B; /* Tono Slate oscuro profesional */
+            color: #1E293B;
             margin-top: 0.5rem;
             margin-bottom: 0.2rem;
         }
 
-        /* Forzar centrado de cualquier imagen renderizada dentro del contenedor de cabecera */
-        .header-container img {
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-            max-width: 140px;
-        }
-
-        /* Estilo para el subtítulo o leyenda */
+        /* Leyenda o subtítulo */
         .custom-caption {
             font-family: 'Montserrat', sans-serif !important;
             font-weight: 400;
-            font-size: 0.95rem;
+            font-size: 1rem;
             color: #64748B;
         }
     </style>
@@ -91,16 +81,32 @@ if logo_base64:
         unsafe_allow_html=True
     )
 
-# Renderizado estructurado y centrado del Logo y Títulos mediante HTML
-st.markdown('<div class="header-container">', unsafe_allow_html=True)
+# --- CENTRADO ABSOLUTO MEDIANTE COLUMNAS NATIVAS Y CSS ---
+# Creamos 3 columnas para aislar el logo en la columna central y darle mayor tamaño (180px)
+col_izq, col_centro, col_der = st.columns([1, 2, 1])
 
-if Colorlink_ONCLOUD_logo:
-    st.image(Colorlink_ONCLOUD_logo, width=140)
+with col_centro:
+    if logo_base64:
+        # Renderizamos el logo en base64 con un tamaño optimizado y centrado
+        st.markdown(
+            f"""
+            <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
+                <img src="{logo_base64}" style="width: 180px; height: auto; display: block;" alt="Colorlink Logo">
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-st.markdown('<h1 class="custom-title">Colorlink Vision</h1>', unsafe_allow_html=True)
-st.markdown('<p class="custom-caption">Extracción automática de deltas y coordenadas CIELAB con registro en Base de Datos.</p>', unsafe_allow_html=True)
-
-st.markdown('</div>', unsafe_allow_html=True)
+# Título y leyenda centrados con tipografía Montserrat
+st.markdown(
+    """
+    <div class="text-center-container">
+        <h1 class="custom-title">Colorlink Vision</h1>
+        <p class="custom-caption">Extracción automática de deltas y coordenadas CIELAB con registro en Base de Datos.</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # ==========================================
 # 2. CONEXIÓN A SUPABASE Y GEMINI API
